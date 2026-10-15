@@ -1,0 +1,12 @@
+# The whole repo is deployed into the subdomain folder by Hostinger's Git tool.
+# Send every request into /public and keep app/, config/, database/, storage/ and bin/ unreachable.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(app|config|database|storage|bin|docs)(/|$) - [F,L]
+    RewriteRule ^(README|DEPLOY|PRD|CLAUDE)\.md$ - [F,L]
+    RewriteRule ^\.git - [F,L]
+    RewriteRule ^$ public/ [L]
+    RewriteRule ^(?!public/)(.*)$ public/$1 [L]
+</IfModule>

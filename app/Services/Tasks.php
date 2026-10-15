@@ -1,0 +1,191 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Core\Auth;
+use App\Core\Database as DB;
+
+/** Task queries and the rules every change goes through (status → completed_at, history). */
+final class Tasks
+{
+    public const PRIORITIES = ['urgent' => 'Urgent', 'high' => 'High', 'normal' => 'Normal', 'low' => 'Low'];
+
+    /** The current ClickUp workflow (PRD §5.3). */
+    public const DEFAULT_STATUSES = [
+        ['Requested', '#8b8f98', 'open'],
+        ['In Progress', '#0ea5e9', 'active'],
+        ['For Review', '#f59e0b', 'active'],
+        ['Revisions', '#ef4444', 'active'],
+        ['Approved', '#22c55e', 'done'],
+    ];
+
+    public static function createDefaultStatuses(int $projectId): void
+    {
+        foreach (self::DEFAULT_STATUSES as $i => [$name, $color, $type]) {
+            DB::insert('statuses', ['project_id' => $projectId, 'name' => $name, 'color' => $color, 'type' => $type, 'position' => $i]);
+        }
+    }
+
+    public static function statuses(int $projectId): array
+    {
+        return DB::all('SELECT id, name, color, type, position FROM statuses WHERE project_id = ? ORDER BY position, id', [$projectId]);
+    }
+
+    /** Every live task in a project, ready for the board and list. */
+    public static function forProject(int $projectId): array
+    {
+        $rows = DB::all('SELECT * FROM tasks WHERE project_id = ? AND deleted_at IS NULL ORDER BY position, id', [$projectId]);
+        return self::serializeMany($rows);
+    }
+
+    public static function serializeMany(array $rows): array
+    {
+        if (!$rows) {
+            return [];
+        }
+        $ids = array_map(fn ($r) => (int) $r['id'], $rows);
+        $in = DB::placeholders($ids);
+        $assignees = [];
+        foreach (DB::all("SELECT task_id, user_id FROM task_assignees WHERE task_id IN ($in)", $ids) as $a) {
+            $assignees[(int) $a['task_id']][] = (int) $a['user_id'];
+        }
+        $counts = fn (string $sql) => array_column(DB::all($sql, $ids), 'n', 'k');
+        $comments = $counts("SELECT task_id AS k, COUNT(*) AS n FROM comments WHERE task_id IN ($in) GROUP BY task_id");
+        $files = $counts("SELECT task_id AS k, COUNT(*) AS n FROM attachments WHERE task_id IN ($in) GROUP BY task_id");
+        $subs = [];
+        foreach (DB::all(
+            "SELECT t.parent_id, COUNT(*) AS total, SUM(CASE WHEN s.type = 'done' THEN 1 ELSE 0 END) AS done
+             FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.parent_id IN ($in) AND t.deleted_at IS NULL GROUP BY t.parent_id",
+            $ids
+        ) as $s) {
+            $subs[(int) $s['parent_id']] = [(int) $s['total'], (int) $s['done']];
+        }
+        return array_map(function ($r) use ($assignees, $comments, $files, $subs) {
+            $id = (int) $r['id'];
+            $r['assignee_ids'] = $assignees[$id] ?? [];
+            return self::serialize($r, $subs[$id] ?? [0, 0], (int) ($comments[$id] ?? 0), (int) ($files[$id] ?? 0));
+        }, $rows);
+    }
+
+    public static function serialize(array $r, array $subs = [0, 0], int $comments = 0, int $files = 0): array
+    {
+        return [
+            'id'            => (int) $r['id'],
+            'parent_id'     => $r['parent_id'] !== null ? (int) $r['parent_id'] : null,
+            'status_id'     => (int) $r['status_id'],
+            'title'         => $r['title'],
+            'priority'      => $r['priority'],
+            'start_date'    => $r['start_date'],
+            'due_date'      => $r['due_date'],
+            'created_at'    => $r['created_at'],
+            'created_by'    => $r['created_by'] !== null ? (int) $r['created_by'] : null,
+            'completed_at'  => $r['completed_at'],
+            'position'      => (int) $r['position'],
+            'assignees'     => $r['assignee_ids'],
+            'subtasks'      => $subs[0],
+            'subtasks_done' => $subs[1],
+            'comments'      => $comments,
+            'files'         => $files,
+            'can'           => self::abilities($r),
+        ];
+    }
+
+    /** What the current member may do to this task (the server checks again on every change). */
+    public static function abilities(array $task): array
+    {
+        return [
+            'edit'   => Access::canTask('edit_tasks', $task),
+            'move'   => Access::canTask('move_tasks', $task),
+            'assign' => Access::canTask('assign', $task),
+            'fields' => Access::canTask('set_fields', $task),
+            'delete' => Access::canTask('delete_tasks', $task),
+        ];
+    }
+
+    /** Everything the task panel shows. */
+    public static function detail(array $task): array
+    {
+        $id = (int) $task['id'];
+        $data = self::serializeMany([$task])[0];
+        $data['description'] = $task['description'];
+        $data['project_id'] = (int) $task['project_id'];
+        $data['parent'] = $task['parent_id'] ? DB::one('SELECT id, title FROM tasks WHERE id = ? AND deleted_at IS NULL', [$task['parent_id']]) : null;
+        $data['subtask_list'] = self::serializeMany(DB::all('SELECT * FROM tasks WHERE parent_id = ? AND deleted_at IS NULL ORDER BY position, id', [$id]));
+
+        $files = DB::all('SELECT a.*, u.name AS user_name FROM attachments a JOIN users u ON u.id = a.user_id WHERE a.task_id = ? ORDER BY a.id', [$id]);
+        $files = array_map(fn ($f) => self::file($f), $files);
+        $byComment = [];
+        foreach ($files as $f) {
+            if ($f['comment_id']) {
+                $byComment[$f['comment_id']][] = $f;
+            }
+        }
+        $data['attachments'] = array_values(array_filter($files, fn ($f) => !$f['comment_id']));
+
+        $feed = [];
+        foreach (DB::all('SELECT * FROM activity WHERE task_id = ? ORDER BY id', [$id]) as $a) {
+            $feed[] = ['type' => 'event', 'user_id' => $a['user_id'] !== null ? (int) $a['user_id'] : null, 'text' => Activity::describe($a), 'at' => $a['created_at'], 'sort' => $a['created_at'] . '-0-' . $a['id']];
+        }
+        $uid = Auth::id();
+        foreach (DB::all('SELECT * FROM comments WHERE task_id = ? ORDER BY id', [$id]) as $c) {
+            $mine = (int) $c['user_id'] === $uid;
+            $feed[] = [
+                'type' => 'comment', 'id' => (int) $c['id'], 'user_id' => (int) $c['user_id'],
+                'body' => $c['body'], 'html' => RichText::comment($c['body']), 'at' => $c['created_at'], 'edited' => $c['edited_at'] !== null,
+                'files' => $byComment[(int) $c['id']] ?? [],
+                'can_edit' => $mine, 'can_delete' => $mine || Access::can('moderate'),
+                'sort' => $c['created_at'] . '-1-' . $c['id'],
+            ];
+        }
+        usort($feed, fn ($a, $b) => strcmp($a['sort'], $b['sort']));
+        $data['feed'] = $feed;
+        return $data;
+    }
+
+    public static function file(array $f): array
+    {
+        return [
+            'id'         => (int) $f['id'],
+            'comment_id' => $f['comment_id'] !== null ? (int) $f['comment_id'] : null,
+            'name'       => $f['file_name'],
+            'size'       => human_size((int) $f['size']),
+            'image'      => Uploads::isImage($f['mime']),
+            'url'        => url('/files/' . $f['id']),
+            'user_id'    => (int) $f['user_id'],
+            'can_delete' => (int) $f['user_id'] === Auth::id() || Access::can('moderate'),
+        ];
+    }
+
+    /** Move a task to a status: sets or clears completed_at and records the change. */
+    public static function setStatus(array $task, array $status): void
+    {
+        if ((int) $task['status_id'] === (int) $status['id']) {
+            return;
+        }
+        $old = DB::one('SELECT name, type FROM statuses WHERE id = ?', [$task['status_id']]);
+        $completed = $task['completed_at'];
+        if ($status['type'] === 'done' && ($old['type'] ?? '') !== 'done') {
+            $completed = now();
+        } elseif ($status['type'] !== 'done') {
+            $completed = null;
+        }
+        DB::update('tasks', ['status_id' => (int) $status['id'], 'completed_at' => $completed, 'updated_at' => now()], 'id = ?', [$task['id']]);
+        Activity::log((int) $task['id'], 'status', $old['name'] ?? '?', $status['name']);
+    }
+
+    /** A status of the task's project, or 422. */
+    public static function status(int $projectId, mixed $statusId): array
+    {
+        $s = DB::one('SELECT * FROM statuses WHERE id = ? AND project_id = ?', [(int) $statusId, $projectId]);
+        if (!$s) {
+            abort(422, 'That status doesn’t exist in this project.');
+        }
+        return $s;
+    }
+
+    public static function nextPosition(int $projectId, int $statusId): int
+    {
+        return (int) DB::value('SELECT COALESCE(MAX(position), -1) + 1 FROM tasks WHERE project_id = ? AND status_id = ?', [$projectId, $statusId]);
+    }
+}

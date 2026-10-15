@@ -1,0 +1,20 @@
+# Secrets: server-only config (database password, app key)
+config/local.php
+.env
+.env.*
+
+# Local data: SQLite database, uploaded files, logs
+storage/database.sqlite*
+storage/*.sqlite
+storage/logs/*
+!storage/logs/.gitkeep
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/local-*.txt
+
+# OS / editor
+*.zip
+.DS_Store
+.claude/
+.idea/
+.vscode/
