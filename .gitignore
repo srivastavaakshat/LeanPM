@@ -18,3 +18,4 @@ storage/local-*.txt
 .claude/
 .idea/
 .vscode/
+storage/imports/

@@ -206,6 +206,22 @@ A permission change takes effect on the member's next page load. The member's pr
 - Optional second file: **comments export** (`Task ID, Task Title, Author, Comment, Posted At`).
 - UTF-8 with BOM so Excel and Google Sheets open it cleanly.
 
+### 5.11a CSV import
+- An **Import** button on each project (for anyone who can create tasks) opens a three-step flow:
+  1. Upload a CSV.
+  2. Check how the columns match LeanPM's fields.
+  3. Preview the first rows, then import.
+- **Column matching:** columns are matched automatically by name. This covers LeanPM's own export, ClickUp ("Task Name", "Date Closed" …), Trello, and hand-made sheets. Any column can be changed or skipped, including mapping to the project's custom fields or "Add as a comment".
+- **What gets read:**
+  - Stages are matched by name. Unknown stages go to a stage you choose.
+  - Priority accepts Urgent/High/Normal/Low, 1–4, or P1–P4.
+  - Assignees are matched by name, email, or a unique first name.
+  - Dates can be 2026-10-15, 15/10/2026 (or US month-first), "15 Oct 2026", or ClickUp's long dates.
+  - A "Parent task" title makes the row a subtask.
+  - Done-stage tasks get their completed date from the file, or today.
+- **Afterwards:** a report lists anything that couldn't be matched (stages, people, dates, field values, rows with no title). The imported tasks themselves are kept.
+- **Limits and permissions:** up to 2,000 rows or 5 MB per file. Columns the person isn't allowed to set (assignees, priority/dates/fields) are skipped and reported. The project's settings offer a sample CSV with its stages and fields.
+
 ## 6. Data model (draft)
 
 ```

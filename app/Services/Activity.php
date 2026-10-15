@@ -28,6 +28,7 @@ final class Activity
         $to = $a['to_value'];
         return match ($a['action']) {
             'created'          => 'created this task',
+            'imported'         => 'imported this task from a CSV',
             'status'           => "changed status from {$from} to {$to}",
             'title'            => "renamed this task to “{$to}”",
             'description'      => 'updated the description',

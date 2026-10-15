@@ -41,6 +41,11 @@ $router->post('/o/{org}/p/{project}/rename', [ProjectController::class, 'rename'
 $router->post('/o/{org}/p/{project}/archive', [ProjectController::class, 'archive']);
 $router->post('/o/{org}/p/{project}/statuses', [ProjectController::class, 'saveStatuses']);
 $router->post('/o/{org}/p/{project}/statuses/template', [ProjectController::class, 'applyTemplate']);
+$router->get('/o/{org}/p/{project}/import', [App\Controllers\ImportController::class, 'show']);
+$router->post('/o/{org}/p/{project}/import', [App\Controllers\ImportController::class, 'upload']);
+$router->post('/o/{org}/p/{project}/import/run', [App\Controllers\ImportController::class, 'run']);
+$router->post('/o/{org}/p/{project}/import/cancel', [App\Controllers\ImportController::class, 'cancel']);
+$router->get('/o/{org}/p/{project}/import/sample.csv', [App\Controllers\ImportController::class, 'sample']);
 $router->post('/o/{org}/p/{project}/fields', [ProjectController::class, 'saveFields']);
 $router->post('/o/{org}/p/{project}/fields/template', [ProjectController::class, 'addTemplateFields']);
 $router->post('/o/{org}/p/{project}/fields/{field}/delete', [ProjectController::class, 'deleteField']);

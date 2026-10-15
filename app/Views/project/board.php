@@ -14,6 +14,11 @@ $base = '/o/' . $org['slug'] . '/p/' . $project['id'];
       <?php endif; ?>
     </div>
     <div class="row-center">
+    <?php if (Access::can('create_tasks')): ?>
+      <a class="btn btn-sm" href="<?= e(url($base . '/import')) ?>" title="Import tasks from a CSV">
+        <svg class="i" viewBox="0 0 20 20"><path d="M10 13V3M6 9l4 4 4-4M4 16h12"/></svg> Import
+      </a>
+    <?php endif; ?>
     <?php if (Access::can('manage_statuses')): ?>
       <a class="btn btn-sm" href="<?= e(url($base . '/settings')) ?>">Edit stages</a>
     <?php endif; ?>
