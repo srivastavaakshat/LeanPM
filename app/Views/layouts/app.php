@@ -119,10 +119,10 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
     <?= csrf_field() ?>
     <h2>New project</h2>
     <label class="field"><span>Name</span><input name="name" required maxlength="120" placeholder="e.g. Cricrocket redesign" autofocus></label>
-    <div class="field"><span>Stages</span>
+    <div class="field"><span>Template</span>
       <?= \App\Core\View::partial('partials/template_picker', ['selected' => 'design']) ?>
     </div>
-    <p class="hint">You can rename, add, remove and reorder stages any time in the project’s settings. Each project has its own.</p>
+    <p class="hint">The template sets the starting stages and fields. Change both any time in the project’s settings. Each project has its own.</p>
     <div class="actions"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">Create project</button></div>
   </form>
 </dialog>

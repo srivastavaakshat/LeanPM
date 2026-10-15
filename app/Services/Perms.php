@@ -16,7 +16,7 @@ final class Perms
         'edit_tasks'      => ['Edit tasks', 'Tasks', 'scope', 'Title, description and subtasks'],
         'move_tasks'      => ['Change status (move cards)', 'Tasks', 'scope', 'Works even when editing is off'],
         'assign'          => ['Assign and unassign people', 'Tasks', 'scope', ''],
-        'set_fields'      => ['Set priority and dates', 'Tasks', 'scope', ''],
+        'set_fields'      => ['Set priority, dates and custom fields', 'Tasks', 'scope', 'e.g. the Figma file link'],
         'delete_tasks'    => ['Delete tasks', 'Tasks', 'scope', 'Goes to Trash; the Owner can restore it'],
         'comment'         => ['Comment', 'Comments and files', 'bool', 'Everyone can edit or delete their own comments'],
         'upload'          => ['Upload files', 'Comments and files', 'bool', ''],

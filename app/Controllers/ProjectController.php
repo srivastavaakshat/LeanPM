@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Database as DB;
 use App\Services\Access;
+use App\Services\Fields;
 use App\Services\Tasks;
 
 final class ProjectController
@@ -23,6 +24,7 @@ final class ProjectController
         $id = DB::transaction(function () use ($o, $name, $template) {
             $id = DB::insert('projects', ['org_id' => $o['id'], 'name' => $name, 'created_by' => Auth::id(), 'created_at' => now()]);
             Tasks::createDefaultStatuses($id, $template);
+            \App\Services\Fields::addTemplate($id, $template);
             // Members limited to chosen projects keep seeing the projects they create.
             if (Access::$member['project_ids'] !== null && Access::$member['id']) {
                 DB::insert('membership_projects', ['membership_id' => Access::$member['id'], 'project_id' => $id]);
@@ -58,6 +60,7 @@ final class ProjectController
                 'statuses' => Access::can('manage_statuses'),
             ],
             'priorities' => Tasks::PRIORITIES,
+            'fields'     => \App\Services\Fields::forProject((int) $p['id']),
             'settingsUrl' => url("/o/{$o['slug']}/p/{$p['id']}/settings"),
             'base'       => url('/'),
             'csrf'       => csrf_token(),
@@ -75,7 +78,11 @@ final class ProjectController
             abort(403);
         }
         $counts = array_column(DB::all('SELECT status_id, COUNT(*) AS n FROM tasks WHERE project_id = ? AND deleted_at IS NULL GROUP BY status_id', [$p['id']]), 'n', 'status_id');
-        return view('project/settings', ['title' => $p['name'] . ' settings', 'project' => $p, 'statuses' => Tasks::statuses((int) $p['id']), 'counts' => $counts]);
+        $fieldCounts = array_column(DB::all('SELECT v.field_id, COUNT(*) AS n FROM task_field_values v JOIN project_fields f ON f.id = v.field_id WHERE f.project_id = ? GROUP BY v.field_id', [$p['id']]), 'n', 'field_id');
+        return view('project/settings', [
+            'title' => $p['name'] . ' settings', 'project' => $p, 'statuses' => Tasks::statuses((int) $p['id']), 'counts' => $counts,
+            'fields' => Fields::forProject((int) $p['id']), 'fieldCounts' => $fieldCounts,
+        ]);
     }
 
     public function rename(string $org, string $project): never
@@ -149,6 +156,79 @@ final class ProjectController
         });
         flash('success', 'Statuses saved.');
         redirect($back);
+    }
+
+    /** Save every custom field at once: order, names, dropdown options; new rows have id "new". */
+    public function saveFields(string $org, string $project): never
+    {
+        $o = Access::org($org);
+        $p = Access::project((int) $project);
+        Access::require('manage_statuses');
+        $back = "/o/{$o['slug']}/p/{$p['id']}/settings#fields";
+        $existing = array_column(Fields::forProject((int) $p['id']), null, 'id');
+        $ids = (array) ($_POST['field_id'] ?? []);
+        $names = (array) ($_POST['field_name'] ?? []);
+        $types = (array) ($_POST['field_type'] ?? []);
+        $options = (array) ($_POST['field_options'] ?? []);
+        DB::transaction(function () use ($ids, $names, $types, $options, $existing, $p) {
+            $pos = 0;
+            foreach ($ids as $i => $id) {
+                $name = mb_substr(trim((string) ($names[$i] ?? '')), 0, 60);
+                if ($name === '') {
+                    continue;
+                }
+                $isNew = $id === 'new';
+                // An existing field keeps its type, so stored values always match it.
+                $type = $isNew ? (isset(Fields::TYPES[$types[$i] ?? '']) ? $types[$i] : 'text') : ($existing[(int) $id]['type'] ?? null);
+                if ($type === null) {
+                    continue;
+                }
+                $opts = $type === 'select'
+                    ? array_values(array_unique(array_filter(array_map(fn ($x) => mb_substr(trim($x), 0, 60), explode(',', (string) ($options[$i] ?? ''))), 'strlen')))
+                    : [];
+                $row = ['name' => $name, 'options' => json_encode($opts, JSON_UNESCAPED_UNICODE), 'position' => $pos++];
+                if ($isNew) {
+                    DB::insert('project_fields', $row + ['project_id' => $p['id'], 'type' => $type]);
+                } else {
+                    DB::update('project_fields', $row, 'id = ? AND project_id = ?', [(int) $id, $p['id']]);
+                    if ($type === 'select') {
+                        // Values no longer among the options are cleared.
+                        $keep = $opts ?: ['__none__'];
+                        DB::query('DELETE FROM task_field_values WHERE field_id = ? AND value NOT IN (' . DB::placeholders($keep) . ')', array_merge([(int) $id], $keep));
+                    }
+                }
+            }
+        });
+        flash('success', 'Fields saved.');
+        redirect($back);
+    }
+
+    public function deleteField(string $org, string $project, string $field): never
+    {
+        $o = Access::org($org);
+        $p = Access::project((int) $project);
+        Access::require('manage_statuses');
+        $f = DB::one('SELECT * FROM project_fields WHERE id = ? AND project_id = ?', [(int) $field, $p['id']]);
+        if (!$f) {
+            abort(404);
+        }
+        DB::query('DELETE FROM project_fields WHERE id = ?', [$f['id']]); // its values go with it
+        flash('success', "“{$f['name']}” field deleted.");
+        redirect("/o/{$o['slug']}/p/{$p['id']}/settings#fields");
+    }
+
+    public function addTemplateFields(string $org, string $project): never
+    {
+        $o = Access::org($org);
+        $p = Access::project((int) $project);
+        Access::require('manage_statuses');
+        $key = (string) input('template');
+        if (!isset(Fields::TEMPLATES[$key])) {
+            abort(422);
+        }
+        $n = Fields::addTemplate((int) $p['id'], $key);
+        flash('success', $n ? "Added {$n} field" . ($n > 1 ? 's' : '') . ' from “' . Tasks::TEMPLATES[$key]['label'] . '”.' : 'This project already has those fields.');
+        redirect("/o/{$o['slug']}/p/{$p['id']}/settings#fields");
     }
 
     /** Swap this project's stages for a template; tasks keep their progress (see Tasks::applyTemplate). */

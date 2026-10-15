@@ -63,6 +63,7 @@ final class OrgController
             ]);
             $pid = DB::insert('projects', ['org_id' => $orgId, 'name' => $project, 'created_by' => Auth::id(), 'created_at' => now()]);
             \App\Services\Tasks::createDefaultStatuses($pid, $template);
+            \App\Services\Fields::addTemplate($pid, $template);
             return $pid;
         });
         flash('success', "{$name} is ready. Add your team from Members.");

@@ -41,6 +41,7 @@ final class Activity
             'parent_set'       => "made this a subtask of “{$to}”",
             'parent_removed'   => "detached this from “{$from}”",
             'mentioned'        => "mentioned {$to}",
+            'field'            => $to === null ? "cleared {$from}" : "set {$from} to {$to}",
             'file_added'       => "attached {$to}",
             'file_removed'     => "removed {$from}",
             'deleted'          => 'moved this task to Trash',

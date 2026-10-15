@@ -61,7 +61,7 @@ When adding or editing a member, the admin first picks a **starting preset** and
 | Edit tasks | No / **own tasks** (assigned to or created by them) / **all tasks**. Covers title, description, and subtasks. |
 | Change status (move cards) | No / own / all. Can be on even when editing is off. |
 | Assign / unassign people | No / own / all |
-| Set priority and dates | No / own / all |
+| Set priority, dates, and custom fields | No / own / all |
 | Delete tasks | No / own / all. Moves the task and its subtasks to Trash. The Owner, and anyone allowed to delete all tasks, can restore it. |
 
 **Comments and files**
@@ -75,7 +75,7 @@ When adding or editing a member, the admin first picks a **starting preset** and
 | Permission | Notes |
 |---|---|
 | Create, rename, and archive projects | |
-| Configure stages | Add, rename, reorder, and recolor a project's board columns, or switch them to a template |
+| Configure stages | Add, rename, reorder, and recolor a project's board columns, or switch them to a template. Also manages the project's custom fields. |
 | Export CSV reports | Can be limited to **their own tasks only** |
 | Manage members | Add or deactivate members and set permissions. A member can never grant permissions they don't have themselves. |
 | Organization settings | Name and logo |
@@ -101,11 +101,11 @@ A permission change takes effect on the member's next page load. The member's pr
 - **Deleting a stage** that still has tasks asks where to move them.
 - **Templates:** a new project starts from one of three templates, picked when the project is created:
 
-| Template | Stages |
-|---|---|
-| **Design task** (default, the current ClickUp flow) | Requested → In Progress → For Review → Revisions → Approved |
-| **Project management** | Backlog → To Do → In Progress → Blocked → Done |
-| **Task review** | Submitted → In Review → Changes Requested → Approved / Rejected |
+| Template | Stages | Starting fields (5.6a) |
+|---|---|---|
+| **Design task** (default, the current ClickUp flow) | Requested → In Progress → For Review → Revisions → Approved | Figma file (link) |
+| **Project management** | Backlog → To Do → In Progress → Blocked → Done | Doc link (link), Estimate (hours) (number) |
+| **Task review** | Submitted → In Review → Changes Requested → Approved / Rejected | Submission link (link), Reviewer (text) |
 
 - **Switching an existing project to a template:** this replaces its stages. Each task moves to the first new stage of the same type (not started, in progress, or done), so tasks keep their progress and completed dates.
 
@@ -148,6 +148,17 @@ A permission change takes effect on the member's next page load. The member's pr
 | Completed at | Set automatically when the task moves to a Done status; cleared if it moves back |
 
 - Clicking a task opens a detail panel, as in the ClickUp screenshot: fields on the left, Activity and comments on the right.
+
+### 5.6a Custom fields per project
+- Each project has its own **fields**, e.g. **Figma file** on design projects. You add, rename, reorder, and delete them in Project settings → Fields. A project template adds a starting set, and "Add a template's fields" adds any of a template's fields the project is missing.
+- **Types:** Link, Text, Number, Date, Dropdown (options you define), and Checkbox. An existing field keeps its type. To change it, delete the field and add it again.
+- **Where they show:**
+  - Task panel: an editable row under Priority. Links get an "Open Figma" (or "Open docs.google.com"…) button.
+  - Board cards: link fields appear as chips that open the link.
+  - List view: one sortable column per field.
+  - Tasks CSV: one column per field name.
+- Editing a field's value uses the *Set priority, dates and custom fields* permission. Values are validated: a real link, a number, a valid date, or one of the dropdown options.
+- Changing a value is recorded in the task's history ("set Figma file to …"). Deleting a field removes its values.
 
 ### 5.7 Subtasks
 - Add a new subtask from inside a task.

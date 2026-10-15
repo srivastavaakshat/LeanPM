@@ -122,6 +122,7 @@ final class Tasks
             $assignees[(int) $a['task_id']][] = (int) $a['user_id'];
         }
         $counts = fn (string $sql) => array_column(DB::all($sql, $ids), 'n', 'k');
+        $fieldValues = Fields::values($ids);
         $comments = $counts("SELECT task_id AS k, COUNT(*) AS n FROM comments WHERE task_id IN ($in) GROUP BY task_id");
         $files = $counts("SELECT task_id AS k, COUNT(*) AS n FROM attachments WHERE task_id IN ($in) GROUP BY task_id");
         $subs = [];
@@ -132,9 +133,10 @@ final class Tasks
         ) as $s) {
             $subs[(int) $s['parent_id']] = [(int) $s['total'], (int) $s['done']];
         }
-        return array_map(function ($r) use ($assignees, $comments, $files, $subs) {
+        return array_map(function ($r) use ($assignees, $comments, $files, $subs, $fieldValues) {
             $id = (int) $r['id'];
             $r['assignee_ids'] = $assignees[$id] ?? [];
+            $r['field_values'] = $fieldValues[$id] ?? [];
             return self::serialize($r, $subs[$id] ?? [0, 0], (int) ($comments[$id] ?? 0), (int) ($files[$id] ?? 0));
         }, $rows);
     }
@@ -154,6 +156,7 @@ final class Tasks
             'completed_at'  => $r['completed_at'],
             'position'      => (int) $r['position'],
             'assignees'     => $r['assignee_ids'],
+            'fields'        => (object) ($r['field_values'] ?? []),
             'subtasks'      => $subs[0],
             'subtasks_done' => $subs[1],
             'comments'      => $comments,

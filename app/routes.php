@@ -41,6 +41,9 @@ $router->post('/o/{org}/p/{project}/rename', [ProjectController::class, 'rename'
 $router->post('/o/{org}/p/{project}/archive', [ProjectController::class, 'archive']);
 $router->post('/o/{org}/p/{project}/statuses', [ProjectController::class, 'saveStatuses']);
 $router->post('/o/{org}/p/{project}/statuses/template', [ProjectController::class, 'applyTemplate']);
+$router->post('/o/{org}/p/{project}/fields', [ProjectController::class, 'saveFields']);
+$router->post('/o/{org}/p/{project}/fields/template', [ProjectController::class, 'addTemplateFields']);
+$router->post('/o/{org}/p/{project}/fields/{field}/delete', [ProjectController::class, 'deleteField']);
 $router->post('/o/{org}/p/{project}/statuses/{status}/delete', [ProjectController::class, 'deleteStatus']);
 
 // Members and permissions

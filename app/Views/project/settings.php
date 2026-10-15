@@ -8,7 +8,7 @@ $types = ['open' => 'Not started', 'active' => 'In progress', 'done' => 'Done (s
   <header class="page-head">
     <a class="back" href="<?= e(url($base)) ?>">← Back to board</a>
     <h1><?= e($project['name']) ?> settings</h1>
-    <p class="muted">Stages, name and archiving for this project.</p>
+    <p class="muted">Stages, fields, name and archiving for this project.</p>
   </header>
 
   <?php if (Access::can('manage_statuses')): ?>
@@ -52,6 +52,52 @@ $types = ['open' => 'Not started', 'active' => 'In progress', 'done' => 'Done (s
     <p class="hint">Replaces the stages above. Tasks keep their progress: not-started tasks go to the template’s first not-started stage, in-progress to its first in-progress stage, done to its first done stage. You can fine-tune afterwards.</p>
     <?= \App\Core\View::partial('partials/template_picker', ['selected' => null]) ?>
     <div class="actions"><button class="btn">Switch stages</button></div>
+  </form>
+
+  <form method="post" action="<?= e(url($base . '/fields')) ?>" class="card stack" id="fields">
+    <?= csrf_field() ?>
+    <h2 class="card-title">Fields</h2>
+    <p class="hint">Extra details every task in this project can have, like a <strong>Figma file</strong> link. They show on the task, on board cards (links) and in the list and CSV exports. Each project has its own fields.</p>
+    <div class="field-rows" id="field-rows">
+      <?php foreach ($fields as $f): $n = (int) ($fieldCounts[$f['id']] ?? 0); ?>
+        <div class="field-def">
+          <input type="hidden" name="field_id[]" value="<?= (int) $f['id'] ?>">
+          <input type="hidden" name="field_type[]" value="<?= e($f['type']) ?>">
+          <div class="order-btns"><button type="button" class="icon-btn" data-up title="Move up">↑</button><button type="button" class="icon-btn" data-down title="Move down">↓</button></div>
+          <input name="field_name[]" value="<?= e($f['name']) ?>" maxlength="60" required aria-label="Field name">
+          <span class="type-tag"><?= e(\App\Services\Fields::TYPES[$f['type']]) ?></span>
+          <input name="field_options[]" value="<?= e(implode(', ', $f['options'])) ?>" placeholder="Options, comma separated" aria-label="Dropdown options" <?= $f['type'] === 'select' ? '' : 'hidden' ?>>
+          <span class="muted small count"><?= $n ?> filled</span>
+          <button type="submit" class="icon-btn danger" title="Delete field" formaction="<?= e(url($base . '/fields/' . $f['id'] . '/delete')) ?>" formnovalidate
+            onclick="return confirm(<?= e(json_encode('Delete the “' . $f['name'] . '” field?' . ($n ? " Its value on {$n} tasks is removed." : ''))) ?>)">✕</button>
+        </div>
+      <?php endforeach; ?>
+      <?php if (!$fields): ?><p class="muted small" id="no-fields">No fields yet. Add one below or from a template.</p><?php endif; ?>
+    </div>
+    <template id="field-template">
+      <div class="field-def">
+        <input type="hidden" name="field_id[]" value="new">
+        <div class="order-btns"><button type="button" class="icon-btn" data-up>↑</button><button type="button" class="icon-btn" data-down>↓</button></div>
+        <input name="field_name[]" maxlength="60" required placeholder="e.g. Figma file">
+        <select name="field_type[]" aria-label="Type"><?php foreach (\App\Services\Fields::TYPES as $k => $l): ?><option value="<?= $k ?>"><?= $l ?></option><?php endforeach; ?></select>
+        <input name="field_options[]" placeholder="Options, comma separated" hidden>
+        <span class="muted small count">new</span>
+        <button type="button" class="icon-btn danger" data-remove-new>✕</button>
+      </div>
+    </template>
+    <div class="actions">
+      <button type="button" class="btn" id="add-field">+ Add field</button>
+      <button class="btn btn-primary">Save fields</button>
+    </div>
+    <div class="row-between template-fields">
+      <span class="muted small">Or add a template’s fields:</span>
+      <span class="row-center gap-s">
+        <?php foreach (\App\Services\Tasks::TEMPLATES as $k => $t): ?>
+          <button type="submit" class="btn btn-sm" formaction="<?= e(url($base . '/fields/template')) ?>" formnovalidate name="template" value="<?= e($k) ?>"
+            title="<?= e(implode(', ', array_column(\App\Services\Fields::TEMPLATES[$k], 0))) ?>"><?= e($t['label']) ?></button>
+        <?php endforeach; ?>
+      </span>
+    </div>
   </form>
 
   <dialog id="delete-status" class="dialog">
@@ -102,6 +148,22 @@ $types = ['open' => 'Not started', 'active' => 'In progress', 'done' => 'Done (s
       d.querySelector('form').action = <?= json_encode(url($base . '/statuses/')) ?> + b.delete + '/delete';
       d.showModal();
     }
+  });
+  const frows = document.getElementById('field-rows');
+  frows.addEventListener('click', e => {
+    const row = e.target.closest('.field-def');
+    if (!row) return;
+    if (e.target.matches('[data-up]') && row.previousElementSibling?.matches('.field-def')) row.parentNode.insertBefore(row, row.previousElementSibling);
+    if (e.target.matches('[data-down]') && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
+    if (e.target.matches('[data-remove-new]')) row.remove();
+  });
+  frows.addEventListener('change', e => {
+    if (e.target.name === 'field_type[]') e.target.closest('.field-def').querySelector('[name="field_options[]"]').hidden = e.target.value !== 'select';
+  });
+  document.getElementById('add-field').addEventListener('click', () => {
+    document.getElementById('no-fields')?.remove();
+    frows.appendChild(document.getElementById('field-template').content.cloneNode(true));
+    frows.lastElementChild.querySelector('input[name="field_name[]"]').focus();
   });
   document.getElementById('add-status').addEventListener('click', () => {
     rows.appendChild(document.getElementById('status-template').content.cloneNode(true));

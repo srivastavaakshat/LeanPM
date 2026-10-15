@@ -42,8 +42,22 @@ final class ExportController
             $comments = array_column(DB::all("SELECT task_id, COUNT(*) AS n FROM comments WHERE task_id IN ($in) GROUP BY task_id", $ids), 'n', 'task_id');
         }
 
+        // Custom fields become extra columns, matched by name across the exported projects.
+        $fieldCols = [];   // lower-cased name => display name
+        $fieldDefs = [];   // field id => [column key, def]
+        $projectIds = array_values(array_unique(array_map(fn ($r) => (int) $r['project_id'], $rows)));
+        if ($projectIds) {
+            foreach (DB::all('SELECT * FROM project_fields WHERE project_id IN (' . DB::placeholders($projectIds) . ') ORDER BY project_id, position, id', $projectIds) as $f) {
+                $def = \App\Services\Fields::shape($f);
+                $key = mb_strtolower($def['name']);
+                $fieldCols[$key] ??= $def['name'];
+                $fieldDefs[$def['id']] = [$key, $def];
+            }
+        }
+        $values = \App\Services\Fields::values($ids);
+
         $today = date('Y-m-d');
-        $out = [['Task ID', 'Title', 'Project', 'Parent Task', 'Status', 'Priority', 'Assignees', 'Created By', 'Created At', 'Start Date', 'Due Date', 'Completed At', 'Days to Complete', 'Overdue (Y/N)', 'Comment Count', 'Attachment URLs', 'Task URL']];
+        $out = [['Task ID', 'Title', 'Project', 'Parent Task', 'Status', 'Priority', 'Assignees', 'Created By', 'Created At', 'Start Date', 'Due Date', 'Completed At', 'Days to Complete', 'Overdue (Y/N)', 'Comment Count', 'Attachment URLs', 'Task URL', ...array_values($fieldCols)]];
         foreach ($rows as $r) {
             $id = (int) $r['id'];
             $finished = $r['completed_at'] ? substr($r['completed_at'], 0, 10) : null;
@@ -57,6 +71,14 @@ final class ExportController
                 $overdue ? 'Y' : 'N', (int) ($comments[$id] ?? 0), implode(' ', $files[$id] ?? []),
                 absolute_url("/o/{$o['slug']}/p/{$r['project_id']}", ['task' => $id]),
             ];
+            $extra = array_fill_keys(array_keys($fieldCols), '');
+            foreach ($values[$id] ?? [] as $fid => $v) {
+                if (isset($fieldDefs[$fid])) {
+                    [$key, $def] = $fieldDefs[$fid];
+                    $extra[$key] = \App\Services\Fields::display($def, $v);
+                }
+            }
+            array_push($out[count($out) - 1], ...array_values($extra));
         }
         $this->send("{$o['slug']}-tasks-{$label}.csv", $out);
     }

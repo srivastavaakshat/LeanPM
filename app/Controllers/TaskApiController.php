@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Database as DB;
 use App\Services\Access;
 use App\Services\Activity;
+use App\Services\Fields;
 use App\Services\Mentions;
 use App\Services\RichText;
 use App\Services\Tasks;
@@ -157,6 +158,32 @@ final class TaskApiController
                         $set[$f] = $d;
                         Activity::log((int) $t['id'], $f, $t[$f], $d);
                     }
+                }
+            }
+            if (array_key_exists('fields', $in) && is_array($in['fields'])) {
+                Access::requireTask('set_fields', $t);
+                $defs = array_column(Fields::forProject($projectId), null, 'id');
+                $current = Fields::values([(int) $t['id']])[(int) $t['id']] ?? [];
+                foreach ($in['fields'] as $fid => $raw) {
+                    $def = $defs[(int) $fid] ?? null;
+                    if (!$def) {
+                        abort(422, 'That field no longer exists in this project. Refresh the page.');
+                    }
+                    try {
+                        $value = Fields::clean($def, $raw);
+                    } catch (\InvalidArgumentException $e) {
+                        abort(422, $e->getMessage());
+                    }
+                    $old = $current[$def['id']] ?? '';
+                    if ($value === $old) {
+                        continue;
+                    }
+                    DB::query('DELETE FROM task_field_values WHERE task_id = ? AND field_id = ?', [$t['id'], $def['id']]);
+                    if ($value !== '') {
+                        DB::insert('task_field_values', ['task_id' => $t['id'], 'field_id' => $def['id'], 'value' => $value]);
+                    }
+                    Activity::log((int) $t['id'], 'field', $def['name'], $value === '' ? null : Fields::display($def, $value));
+                    $set['updated_at'] = now();
                 }
             }
             if (array_key_exists('assignees', $in)) {

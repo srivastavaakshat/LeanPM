@@ -73,6 +73,31 @@
     up: '<path d="M10 15V5M5 10l5-5 5 5"/>',
   };
 
+  // ---------- custom fields ----------
+  const FIELDS = boot.fields || [];
+  const fieldVal = (t, f) => (t.fields || {})[f.id] ?? '';
+  const linkLabel = url => {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      if (host.endsWith('figma.com')) return 'Figma';
+      if (host.endsWith('docs.google.com')) return 'Google Doc';
+      if (host.endsWith('drive.google.com')) return 'Drive';
+      return host;
+    } catch { return 'Link'; }
+  };
+  const ICON_LINK_OUT = '<path d="M11 4h5v5M16 4l-7 7M14 11v4a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h4"/>';
+  /** A clickable link that doesn't open the task underneath it. */
+  const fieldLink = (f, url, cls = 'chip field-chip') => h('a', {
+    href: url, target: '_blank', rel: 'noopener noreferrer', class: cls, title: `${f.name}: ${url}`,
+    onclick: e => e.stopPropagation(), onkeydown: e => e.stopPropagation(),
+  }, svg(ICON_LINK_OUT), linkLabel(url));
+  function fieldText(f, v) {
+    if (v === '') return '';
+    if (f.type === 'checkbox') return v === '1' ? '✓' : '';
+    if (f.type === 'date') return fmtDate(v);
+    return v;
+  }
+
   const today = boot.today;
   const addDays = (d, n) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
   const fmtDate = d => {
@@ -279,6 +304,7 @@
     if (t.assignees.length) meta.append(avatars(t.assignees));
     if (t.due_date) meta.append(h('span', { class: 'chip' + (isOverdue(t) ? ' is-overdue' : '') }, svg(ICON.cal), dueLabel(t.due_date)));
     if (t.priority) meta.append(h('span', { class: 'chip', style: `--pc:${PRIORITY_COLORS[t.priority]}` }, svg(ICON.flag, 'i flag'), P[t.priority]));
+    FIELDS.filter(f => f.type === 'url' && fieldVal(t, f)).forEach(f => meta.append(fieldLink(f, fieldVal(t, f))));
     const counts = h('div', { class: 'card-counts' });
     if (t.subtasks) counts.append(h('span', { title: 'Subtasks' }, svg(ICON.sub), `${t.subtasks_done}/${t.subtasks}`));
     if (t.comments) counts.append(h('span', { title: 'Comments' }, svg(ICON.chat), t.comments));
@@ -391,6 +417,12 @@
       if (key === 'assignees') return t.assignees.map(id => members.get(id)?.name || '').sort()[0] || '~';
       if (key === 'title') return t.title.toLowerCase();
       if (key === 'status_id') return statusById(t.status_id)?.position ?? 0;
+      if (key.startsWith('f:')) {
+        const f = FIELDS.find(x => 'f:' + x.id === key);
+        const v = f ? fieldVal(t, f) : '';
+        if (v === '') return dir > 0 ? '~' : '';
+        return f.type === 'number' ? +v : String(v).toLowerCase();
+      }
       return t[key] ?? (dir > 0 ? '~' : '');
     };
     return [...list].sort((a, b) => {
@@ -401,8 +433,9 @@
 
   function renderList() {
     const tasks = visibleTasks();
-    const wrap = h('div', { class: 'list' });
-    const head = h('div', { class: 'list-row list-head' }, COLS.map(([k, label]) => h('button', {
+    const cols = [...COLS.slice(0, 6), ...FIELDS.map(f => ['f:' + f.id, f.name]), COLS[6]];
+    const wrap = h('div', { class: 'list', style: `--cols: minmax(260px, 1fr) 120px 110px 130px 130px 90px${FIELDS.map(() => ' 150px').join('')} 140px; --list-min: ${900 + FIELDS.length * 158}px` });
+    const head = h('div', { class: 'list-row list-head' }, cols.map(([k, label]) => h('button', {
       type: 'button', class: 'th' + (state.sort.key === k ? ' is-sorted' : ''), dataset: { col: k },
       onclick: () => {
         state.sort = state.sort.key === k ? (state.sort.dir === 1 ? { key: k, dir: -1 } : { key: 'position', dir: 1 }) : { key: k, dir: 1 };
@@ -474,6 +507,11 @@
       h('div', { class: 'cell', 'data-label': 'Start' }, dateInput('start_date')),
       h('div', { class: 'cell', 'data-label': 'Due' }, dateInput('due_date')),
       h('div', { class: 'cell muted small', 'data-label': 'Created' }, fmtDate(t.created_at)),
+      FIELDS.map(f => {
+        const v = fieldVal(t, f);
+        return h('div', { class: 'cell small field-cell', 'data-label': f.name },
+          f.type === 'url' && v ? fieldLink(f, v, 'field-link') : h('span', { title: v }, fieldText(f, v)));
+      }),
       h('div', { class: 'cell', 'data-label': 'Status' }, statusSel));
   }
 
@@ -562,7 +600,10 @@
   function render() {
     syncToolbar();
     const view = $('view');
-    const scroll = view.firstElementChild ? [view.firstElementChild.scrollLeft, view.scrollTop] : null;
+    // Keep the scroll position when re-drawing the same view; start at the top-left after switching views.
+    const scroll = view.firstElementChild && state.drawnView === state.view ? [view.firstElementChild.scrollLeft, view.scrollTop] : [0, 0];
+    if (state.drawnView !== state.view) view.scrollLeft = 0;
+    state.drawnView = state.view;
     view.replaceChildren(state.view === 'files' ? renderFiles() : state.view === 'list' ? renderList() : renderBoard());
     view.className = 'view view-' + state.view;
     if (scroll && view.firstElementChild) { view.firstElementChild.scrollLeft = scroll[0]; view.scrollTop = scroll[1]; }
@@ -703,7 +744,8 @@
       fieldRow('Dates', h('div', { class: 'row-center gap-s' }, dateIn('start_date'), h('span', { class: 'muted' }, '→'), dateIn('due_date'))),
       fieldRow('Priority', prio),
       fieldRow('Created', h('span', { class: 'muted' }, fmtWhen(t.created_at), creator ? ` by ${creator.name}` : '')),
-      t.completed_at ? fieldRow('Completed', h('span', { class: 'muted' }, fmtWhen(t.completed_at))) : null);
+      t.completed_at ? fieldRow('Completed', h('span', { class: 'muted' }, fmtWhen(t.completed_at))) : null,
+      FIELDS.map(f => fieldRow(f.name, fieldControl(t, f))));
 
     // description
     const desc = h('div', {
@@ -805,6 +847,30 @@
 
     drawer.replaceChildren(head, h('div', { class: 'drawer-body' }, left, right));
     if (keepScroll !== undefined) feed.scrollTop = keepScroll; else feed.scrollTop = feed.scrollHeight;
+  }
+
+  /** Editor for one custom field in the task panel. Saves on change. */
+  function fieldControl(t, f) {
+    const v = fieldVal(t, f);
+    const off = !t.can.fields;
+    const save = value => { if (value !== v) patch({ fields: { [f.id]: value } }); };
+    if (f.type === 'select') {
+      return h('select', { class: 'cf-input' + (v ? '' : ' is-empty'), disabled: off, onchange: e => save(e.target.value) },
+        h('option', { value: '' }, 'Empty'), f.options.map(o => h('option', { value: o, selected: o === v }, o)));
+    }
+    if (f.type === 'checkbox') {
+      return h('input', { type: 'checkbox', class: 'cf-check', checked: v === '1', disabled: off, onchange: e => save(e.target.checked ? '1' : '') });
+    }
+    const type = { url: 'url', number: 'number', date: 'date' }[f.type] || 'text';
+    const input = h('input', {
+      type, class: 'cf-input' + (v ? '' : ' is-empty'), value: v, disabled: off, step: f.type === 'number' ? 'any' : null,
+      placeholder: off ? 'Empty' : f.type === 'url' ? 'Paste a link' : 'Empty',
+      onchange: e => save(e.target.value.trim()),
+      onkeydown: e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { e.target.value = v; e.target.blur(); } },
+    });
+    if (f.type !== 'url' || !v) return input;
+    return h('div', { class: 'row-center gap-s cf-url' }, input,
+      h('a', { href: v, target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-sm', title: 'Open ' + v }, svg(ICON_LINK_OUT), 'Open ' + linkLabel(v)));
   }
 
   function fieldRow(label, control) {

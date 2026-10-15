@@ -14,6 +14,7 @@ use App\Services\Tasks;
             <span class="stage-chip" style="--sc:<?= e($color) ?>"><?= e($stage) ?></span>
           <?php endforeach; ?>
         </span>
+        <span class="muted small">Fields: <?= e(implode(', ', array_column(\App\Services\Fields::TEMPLATES[$key] ?? [], 0))) ?></span>
       </span>
     </label>
   <?php endforeach; ?>

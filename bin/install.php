@@ -30,7 +30,7 @@ if (isset($opts['fresh'])) {
     if (config('env') === 'production') {
         exit("Refusing --fresh in production. It would delete all data.\n");
     }
-    $tables = ['activity', 'attachments', 'comments', 'task_assignees', 'tasks', 'statuses', 'membership_projects', 'projects', 'memberships', 'organizations', 'users', 'login_attempts', 'schema_migrations'];
+    $tables = ['task_field_values', 'project_fields', 'email_queue', 'activity', 'attachments', 'comments', 'task_assignees', 'tasks', 'statuses', 'membership_projects', 'projects', 'memberships', 'organizations', 'users', 'login_attempts', 'schema_migrations'];
     DB::pdo()->exec($driver === 'mysql' ? 'SET FOREIGN_KEY_CHECKS = 0' : 'PRAGMA foreign_keys = OFF');
     foreach ($tables as $t) {
         DB::pdo()->exec("DROP TABLE IF EXISTS $t");
@@ -106,6 +106,7 @@ if (isset($opts['seed'])) {
 
         $pid = DB::insert('projects', ['org_id' => $orgId, 'name' => 'Creative & Design Hub', 'created_by' => $owner['id'], 'created_at' => $at(40)]);
         Tasks::createDefaultStatuses($pid);
+        \App\Services\Fields::addTemplate($pid, 'design');
         $st = array_column(Tasks::statuses($pid), 'id', 'name');
 
         // [title, status, assignees, priority, due offset, created days ago, completed days ago]
