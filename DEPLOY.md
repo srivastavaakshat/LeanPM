@@ -162,6 +162,25 @@ Then @mention a teammate on a test task.
 
 Until the mailbox is configured, emails aren't sent. They're written to `storage/logs/mail.log` instead.
 
+## Step 10: Sign in with Google (optional)
+
+This lets members sign in with their Google account. It only works for people you've already added under Members, and their Google email must match the email you added them with. Nobody can create an account by signing in with Google.
+
+1. Go to **console.cloud.google.com**, signed in as yourself. At the top, create a project called `LeanPM`.
+2. **APIs & Services → OAuth consent screen** (Google Auth Platform → Branding/Audience):
+   - App name `LeanPM`. Support email: yours.
+   - **Audience:** *External*. Then **Publish app**, so it works for everyone you add, not only test users. The app only asks for name and email, so Google doesn't need to review it.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID:**
+   - Application type: **Web application**, name `LeanPM`.
+   - **Authorized redirect URIs:** add
+     `https://pm.houseofjugaad.com/auth/google/callback`
+     (and `http://localhost:8090/auth/google/callback` if you also want it on your Mac).
+   - Click **Create**, then copy the **Client ID** and **Client secret**.
+4. Over SSH, run `nano config/local.php` and add the `google` block from `config/local.example.php` with those two values. Save.
+   - To allow only company emails, set `'allowed_domains' => ['sportskeeda.com']`.
+5. Open the sign-in page. A **Sign in with Google** button now appears.
+   - Existing members can also connect Google under **Your account**. This is needed if their Google email differs from their LeanPM email.
+
 ---
 
 ## Everyday updates

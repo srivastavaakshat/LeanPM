@@ -47,6 +47,14 @@ Organization (e.g. Sportskeeda)
 - **Rename** an organization in its Settings (Owner, or members with *Organization settings*).
 - **Delete an organization** (Owner only): this permanently removes its projects, tasks, comments, files, and memberships. You confirm by typing the organization's name. People's accounts stay, because they may belong to other organizations.
 
+### 5.1b Sign in with Google
+- When Google credentials are configured, the sign-in page shows **Sign in with Google**. Email and password still work.
+- Google sign-in is **only for people already added as members**. The Google account's verified email must match their LeanPM email, or the Google account they connected under Your account. It never creates accounts.
+- The first Google sign-in links that Google account to the user. A member who signs in with Google never has to replace their temporary password.
+- Under Your account, a member can connect or disconnect Google. Connecting is how someone whose Google email differs from their LeanPM email can use Google.
+- **Optional:** allow only certain email domains (e.g. sportskeeda.com).
+- **Security:** sign-in uses Google's standard OpenID Connect flow and checks that the request started in LeanPM and isn't replayed. It also checks that Google issued the sign-in to LeanPM, hasn't expired, and that the email is verified. Deactivated members can't sign in this way either.
+
 ### 5.1a Member permissions
 When adding or editing a member, the admin first picks a **starting preset** and can then tick or untick any individual permission. The member's exact checkboxes are what get saved, so every member can be set up differently.
 

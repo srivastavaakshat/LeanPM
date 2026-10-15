@@ -56,13 +56,21 @@ final class Auth
             Database::insert('login_attempts', ['ip_hash' => $ipHash, 'email' => mb_substr($email, 0, 190), 'attempted_at' => now()]);
             return 'That email and password don’t match.';
         }
-        if (!$user['is_owner'] && !Database::value('SELECT COUNT(*) FROM memberships WHERE user_id = ? AND active = 1', [$user['id']])) {
-            return 'Your account has been deactivated. Ask your admin to turn it back on.';
+        if ($error = self::loginAs($user)) {
+            return $error;
         }
-
         Database::query('DELETE FROM login_attempts WHERE ip_hash = ?', [$ipHash]);
         if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
             Database::update('users', ['password_hash' => password_hash($password, PASSWORD_DEFAULT)], 'id = ?', [$user['id']]);
+        }
+        return null;
+    }
+
+    /** Start a session for a user who has proved who they are (password or Google). Null on success, or an error. */
+    public static function loginAs(array $user): ?string
+    {
+        if (!$user['is_owner'] && !Database::value('SELECT COUNT(*) FROM memberships WHERE user_id = ? AND active = 1', [$user['id']])) {
+            return 'Your account has been deactivated. Ask your admin to turn it back on.';
         }
         Session::regenerate();
         $_SESSION['user_id'] = (int) $user['id'];

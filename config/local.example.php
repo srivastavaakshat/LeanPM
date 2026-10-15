@@ -17,6 +17,13 @@ return [
         'from_name' => 'LeanPM',
         'reply_to'  => '',                           // optional, e.g. your own address
     ],
+    // Sign in with Google (optional). Google Cloud Console → APIs & Services → Credentials → OAuth client ID.
+    // Redirect URI: https://pm.houseofjugaad.com/auth/google/callback
+    'google' => [
+        'client_id'       => '',                     // ….apps.googleusercontent.com
+        'client_secret'   => '',
+        'allowed_domains' => [],                     // e.g. ['sportskeeda.com'] to only allow those emails; [] = anyone you've added
+    ],
     'database' => [
         'driver'   => 'mysql',
         'host'     => 'localhost',

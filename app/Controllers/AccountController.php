@@ -43,6 +43,7 @@ final class AccountController
         return view('auth/account', [
             'title' => 'Your account', 'user' => Auth::user(), 'orgs' => \App\Services\Access::myOrgs(),
             'notify' => (int) DB::value('SELECT notify_mentions FROM users WHERE id = ?', [Auth::id()]),
+            'googleLinked' => (bool) DB::value('SELECT google_sub FROM users WHERE id = ?', [Auth::id()]),
         ]);
     }
 

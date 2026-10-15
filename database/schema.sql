@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at DATETIME NOT NULL,
     last_login_at DATETIME NULL,
     notify_mentions TINYINT(1) NOT NULL DEFAULT 1,
-    UNIQUE KEY users_email (email)
+    google_sub VARCHAR(64) NULL,
+    UNIQUE KEY users_email (email),
+    UNIQUE KEY users_google_sub (google_sub)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS organizations (
