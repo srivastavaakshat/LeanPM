@@ -255,6 +255,7 @@
       board.append(col);
       dropZone(cards, s);
     });
+    if (boot.can.statuses) board.append(h('a', { class: 'add-column', href: boot.settingsUrl }, svg(ICON.plus), 'Add or edit stages'));
     return board;
   }
 

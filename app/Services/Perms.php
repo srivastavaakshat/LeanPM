@@ -22,7 +22,7 @@ final class Perms
         'upload'          => ['Upload files', 'Comments and files', 'bool', ''],
         'moderate'        => ['Delete anyone’s comments and files', 'Comments and files', 'bool', ''],
         'manage_projects' => ['Create, rename and archive projects', 'Workspace', 'bool', ''],
-        'manage_statuses' => ['Configure statuses', 'Workspace', 'bool', 'Add, rename, reorder and recolor board columns'],
+        'manage_statuses' => ['Configure stages', 'Workspace', 'bool', 'Add, rename, reorder and recolor a project’s board columns, or switch them to a template'],
         'export'          => ['Export CSV reports', 'Workspace', 'scope', '“Own” = only tasks they’re assigned to'],
         'manage_members'  => ['Manage members', 'Workspace', 'bool', 'Add, deactivate and set permissions. They can’t grant more than they have.'],
         'org_settings'    => ['Organization settings', 'Workspace', 'bool', 'Name'],

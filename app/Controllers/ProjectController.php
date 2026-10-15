@@ -19,9 +19,10 @@ final class ProjectController
             flash('error', 'Give the project a name.');
             back();
         }
-        $id = DB::transaction(function () use ($o, $name) {
+        $template = Tasks::template((string) input('template'));
+        $id = DB::transaction(function () use ($o, $name, $template) {
             $id = DB::insert('projects', ['org_id' => $o['id'], 'name' => $name, 'created_by' => Auth::id(), 'created_at' => now()]);
-            Tasks::createDefaultStatuses($id);
+            Tasks::createDefaultStatuses($id, $template);
             // Members limited to chosen projects keep seeing the projects they create.
             if (Access::$member['project_ids'] !== null && Access::$member['id']) {
                 DB::insert('membership_projects', ['membership_id' => Access::$member['id'], 'project_id' => $id]);
@@ -55,6 +56,7 @@ final class ProjectController
                 'statuses' => Access::can('manage_statuses'),
             ],
             'priorities' => Tasks::PRIORITIES,
+            'settingsUrl' => url("/o/{$o['slug']}/p/{$p['id']}/settings"),
             'base'       => url('/'),
             'csrf'       => csrf_token(),
             'maxUpload'  => (int) config('upload_max_mb', 25),
@@ -145,6 +147,22 @@ final class ProjectController
         });
         flash('success', 'Statuses saved.');
         redirect($back);
+    }
+
+    /** Swap this project's stages for a template; tasks keep their progress (see Tasks::applyTemplate). */
+    public function applyTemplate(string $org, string $project): never
+    {
+        $o = Access::org($org);
+        $p = Access::project((int) $project);
+        Access::require('manage_statuses');
+        $key = (string) input('template');
+        if (!isset(Tasks::TEMPLATES[$key])) {
+            flash('error', 'Pick a template.');
+            redirect("/o/{$o['slug']}/p/{$p['id']}/settings");
+        }
+        $moved = Tasks::applyTemplate((int) $p['id'], $key);
+        flash('success', 'Stages switched to “' . Tasks::TEMPLATES[$key]['label'] . '”' . ($moved ? ", {$moved} tasks moved to matching stages." : '.'));
+        redirect("/o/{$o['slug']}/p/{$p['id']}/settings");
     }
 
     public function deleteStatus(string $org, string $project, string $status): never

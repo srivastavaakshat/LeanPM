@@ -11,20 +11,91 @@ final class Tasks
 {
     public const PRIORITIES = ['urgent' => 'Urgent', 'high' => 'High', 'normal' => 'Normal', 'low' => 'Low'];
 
-    /** The current ClickUp workflow (PRD §5.3). */
-    public const DEFAULT_STATUSES = [
-        ['Requested', '#8b8f98', 'open'],
-        ['In Progress', '#0ea5e9', 'active'],
-        ['For Review', '#f59e0b', 'active'],
-        ['Revisions', '#ef4444', 'active'],
-        ['Approved', '#22c55e', 'done'],
+    /**
+     * Stage templates offered when creating a project (PRD §5.3). Each project gets its own copy,
+     * so editing one project's stages never changes another's. [name, colour, type]
+     */
+    public const TEMPLATES = [
+        'design' => [
+            'label' => 'Design task',
+            'hint'  => 'Your current ClickUp flow: brief in, design, review, revise, approve.',
+            'stages' => [
+                ['Requested', '#8b8f98', 'open'],
+                ['In Progress', '#0ea5e9', 'active'],
+                ['For Review', '#f59e0b', 'active'],
+                ['Revisions', '#ef4444', 'active'],
+                ['Approved', '#22c55e', 'done'],
+            ],
+        ],
+        'project' => [
+            'label' => 'Project management',
+            'hint'  => 'General work tracking with a backlog and a place for blocked tasks.',
+            'stages' => [
+                ['Backlog', '#8b8f98', 'open'],
+                ['To Do', '#6366f1', 'open'],
+                ['In Progress', '#0ea5e9', 'active'],
+                ['Blocked', '#ef4444', 'active'],
+                ['Done', '#22c55e', 'done'],
+            ],
+        ],
+        'review' => [
+            'label' => 'Task review',
+            'hint'  => 'For reviewing work others submit: approve it, ask for changes, or reject it.',
+            'stages' => [
+                ['Submitted', '#8b8f98', 'open'],
+                ['In Review', '#f59e0b', 'active'],
+                ['Changes Requested', '#ef4444', 'active'],
+                ['Approved', '#22c55e', 'done'],
+                ['Rejected', '#6b7280', 'done'],
+            ],
+        ],
     ];
 
-    public static function createDefaultStatuses(int $projectId): void
+    public static function template(?string $key): string
     {
-        foreach (self::DEFAULT_STATUSES as $i => [$name, $color, $type]) {
+        return isset(self::TEMPLATES[(string) $key]) ? (string) $key : 'design';
+    }
+
+    public static function createDefaultStatuses(int $projectId, string $template = 'design'): void
+    {
+        foreach (self::TEMPLATES[self::template($template)]['stages'] as $i => [$name, $color, $type]) {
             DB::insert('statuses', ['project_id' => $projectId, 'name' => $name, 'color' => $color, 'type' => $type, 'position' => $i]);
         }
+    }
+
+    /**
+     * Replace a project's stages with a template. Tasks move to the first new stage of the same
+     * type (not started / in progress / done), so completed dates stay correct for reports.
+     * Returns how many tasks moved.
+     */
+    public static function applyTemplate(int $projectId, string $template): int
+    {
+        $old = self::statuses($projectId);
+        $moved = 0;
+        DB::transaction(function () use ($projectId, $template, $old, &$moved) {
+            // Park the old stages at the end so the new ones take positions 0..n.
+            DB::query('UPDATE statuses SET position = position + 1000 WHERE project_id = ?', [$projectId]);
+            self::createDefaultStatuses($projectId, $template);
+            $new = DB::all('SELECT * FROM statuses WHERE project_id = ? AND position < 1000 ORDER BY position', [$projectId]);
+            $firstOfType = [];
+            foreach ($new as $s) {
+                $firstOfType[$s['type']] ??= $s;
+            }
+            foreach ($old as $o) {
+                $target = $firstOfType[$o['type']] ?? ($o['type'] === 'done' ? end($new) : $new[0]);
+                $tasks = DB::all('SELECT id, completed_at FROM tasks WHERE status_id = ?', [$o['id']]);
+                foreach ($tasks as $t) {
+                    $completed = $target['type'] === 'done' ? ($t['completed_at'] ?? now()) : null;
+                    DB::update('tasks', ['status_id' => $target['id'], 'completed_at' => $completed], 'id = ?', [$t['id']]);
+                    if ($o['name'] !== $target['name']) {
+                        Activity::log((int) $t['id'], 'status', $o['name'], $target['name']);
+                    }
+                    $moved++;
+                }
+                DB::query('DELETE FROM statuses WHERE id = ?', [$o['id']]);
+            }
+        });
+        return $moved;
     }
 
     public static function statuses(int $projectId): array

@@ -101,12 +101,15 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
 </div>
 
 <?php if ($org && Access::can('manage_projects')): ?>
-<dialog id="new-project" class="dialog">
+<dialog id="new-project" class="dialog dialog-wide">
   <form method="post" action="<?= e(url('/o/' . $org['slug'] . '/projects')) ?>">
     <?= csrf_field() ?>
     <h2>New project</h2>
     <label class="field"><span>Name</span><input name="name" required maxlength="120" placeholder="e.g. Cricrocket redesign" autofocus></label>
-    <p class="hint">It starts with the default statuses (Requested → Approved). You can change them in the project’s settings.</p>
+    <div class="field"><span>Stages</span>
+      <?= \App\Core\View::partial('partials/template_picker', ['selected' => 'design']) ?>
+    </div>
+    <p class="hint">You can rename, add, remove and reorder stages any time in the project’s settings. Each project has its own.</p>
     <div class="actions"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">Create project</button></div>
   </form>
 </dialog>

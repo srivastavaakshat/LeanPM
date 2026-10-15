@@ -8,11 +8,15 @@ $base = '/o/' . $org['slug'] . '/p/' . $project['id'];
     <div class="row-center">
       <h1><?= e($project['name']) ?></h1>
       <?php if (Access::can('manage_statuses') || Access::can('manage_projects')): ?>
-        <a class="icon-btn" href="<?= e(url($base . '/settings')) ?>" title="Project settings and statuses">
+        <a class="icon-btn" href="<?= e(url($base . '/settings')) ?>" title="Project settings and stages">
           <svg class="i" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.5"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>
         </a>
       <?php endif; ?>
     </div>
+    <div class="row-center">
+    <?php if (Access::can('manage_statuses')): ?>
+      <a class="btn btn-sm" href="<?= e(url($base . '/settings')) ?>">Edit stages</a>
+    <?php endif; ?>
     <div class="view-toggle" role="tablist">
       <button type="button" data-view="board" role="tab">
         <svg class="i" viewBox="0 0 20 20"><rect x="3" y="4" width="4" height="12" rx="1"/><rect x="8" y="4" width="4" height="8" rx="1"/><rect x="13" y="4" width="4" height="10" rx="1"/></svg> Board
@@ -20,6 +24,7 @@ $base = '/o/' . $org['slug'] . '/p/' . $project['id'];
       <button type="button" data-view="list" role="tab">
         <svg class="i" viewBox="0 0 20 20"><path d="M7 5h10M7 10h10M7 15h10M3.5 5h.01M3.5 10h.01M3.5 15h.01"/></svg> List
       </button>
+    </div>
     </div>
   </header>
 

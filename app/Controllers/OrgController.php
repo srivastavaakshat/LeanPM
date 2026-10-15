@@ -54,14 +54,15 @@ final class OrgController
         for ($i = 2; DB::value('SELECT COUNT(*) FROM organizations WHERE slug = ?', [$slug]); $i++) {
             $slug = $base . '-' . $i;
         }
-        $projectId = DB::transaction(function () use ($name, $slug, $project) {
+        $template = \App\Services\Tasks::template((string) input('template'));
+        $projectId = DB::transaction(function () use ($name, $slug, $project, $template) {
             $orgId = DB::insert('organizations', ['name' => $name, 'slug' => $slug, 'created_by' => Auth::id(), 'created_at' => now()]);
             DB::insert('memberships', [
                 'org_id' => $orgId, 'user_id' => Auth::id(), 'preset' => 'admin',
                 'permissions' => json_encode(Perms::all()), 'all_projects' => 1, 'active' => 1, 'joined_at' => now(),
             ]);
             $pid = DB::insert('projects', ['org_id' => $orgId, 'name' => $project, 'created_by' => Auth::id(), 'created_at' => now()]);
-            \App\Services\Tasks::createDefaultStatuses($pid);
+            \App\Services\Tasks::createDefaultStatuses($pid, $template);
             return $pid;
         });
         flash('success', "{$name} is ready. Add your team from Members.");

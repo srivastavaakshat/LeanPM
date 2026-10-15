@@ -73,7 +73,7 @@ When adding or editing a member, the admin first picks a **starting preset** and
 | Permission | Notes |
 |---|---|
 | Create, rename, and archive projects | |
-| Configure statuses | Add, rename, reorder, and recolor board columns |
+| Configure stages | Add, rename, reorder, and recolor a project's board columns, or switch them to a template |
 | Export CSV reports | Can be limited to **their own tasks only** |
 | Manage members | Add or deactivate members and set permissions. A member can never grant permissions they don't have themselves. |
 | Organization settings | Name and logo |
@@ -90,13 +90,22 @@ A permission change takes effect on the member's next page load. The member's pr
 
 ### 5.2 Projects
 - Create, rename, and archive projects inside an organization.
-- A new project starts with the default statuses (5.3), which can then be edited.
+- A new project starts from a stage template (5.3), which can then be edited.
 
-### 5.3 Customizable statuses (board columns)
-- Add, rename, recolor, reorder (drag), and delete statuses.
-- Each status has a **type**: `Open`, `Active`, or `Done`. "Done" sets the task's `completed_at`, which the reports rely on.
-- Deleting a status that still has tasks asks where to move them.
-- Defaults (from the current ClickUp setup): **Requested** (Open) → **In Progress** → **For Review** → **Revisions** → **Approved** (Done).
+### 5.3 Customizable stages (board columns)
+- Every project has **its own stages**. Changing one project's stages never affects another project.
+- **Editing:** add, rename, recolor, reorder, and delete stages at any time (Project settings, or "Edit stages" on the board).
+- **Stage type:** each stage is `Not started`, `In progress`, or `Done`. Moving a task into a "Done" stage sets its `completed_at`, which the reports rely on.
+- **Deleting a stage** that still has tasks asks where to move them.
+- **Templates:** a new project starts from one of three templates, picked when the project is created:
+
+| Template | Stages |
+|---|---|
+| **Design task** (default, the current ClickUp flow) | Requested → In Progress → For Review → Revisions → Approved |
+| **Project management** | Backlog → To Do → In Progress → Blocked → Done |
+| **Task review** | Submitted → In Review → Changes Requested → Approved / Rejected |
+
+- **Switching an existing project to a template:** this replaces its stages. Each task moves to the first new stage of the same type (not started, in progress, or done), so tasks keep their progress and completed dates.
 
 ### 5.4 Board view (Kanban)
 - One column per status, showing a task count.

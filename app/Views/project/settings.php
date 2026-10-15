@@ -8,13 +8,14 @@ $types = ['open' => 'Not started', 'active' => 'In progress', 'done' => 'Done (s
   <header class="page-head">
     <a class="back" href="<?= e(url($base)) ?>">← Back to board</a>
     <h1><?= e($project['name']) ?> settings</h1>
+    <p class="muted">Stages, name and archiving for this project.</p>
   </header>
 
   <?php if (Access::can('manage_statuses')): ?>
   <form method="post" action="<?= e(url($base . '/statuses')) ?>" class="card stack" id="status-form">
     <?= csrf_field() ?>
-    <h2 class="card-title">Statuses</h2>
-    <p class="hint">These are the board columns, left to right. Moving a task into a <strong>Done</strong> status records its completed date, which the reports use.</p>
+    <h2 class="card-title">Stages</h2>
+    <p class="hint">The board columns for this project only, left to right. Rename, recolor, reorder, add or remove them. Moving a task into a <strong>Done</strong> stage records its completed date, which the reports use.</p>
     <div class="status-rows" id="status-rows">
       <?php foreach ($statuses as $s): ?>
         <div class="status-row">
@@ -33,16 +34,24 @@ $types = ['open' => 'Not started', 'active' => 'In progress', 'done' => 'Done (s
         <input type="hidden" name="status_id[]" value="new">
         <div class="order-btns"><button type="button" class="icon-btn" data-up>↑</button><button type="button" class="icon-btn" data-down>↓</button></div>
         <input type="color" name="color[]" value="#8b5cf6">
-        <input name="name[]" maxlength="60" required placeholder="Status name">
+        <input name="name[]" maxlength="60" required placeholder="Stage name">
         <select name="type[]"><?php foreach ($types as $k => $l): ?><option value="<?= $k ?>" <?= $k === 'active' ? 'selected' : '' ?>><?= $l ?></option><?php endforeach; ?></select>
         <span class="muted small count">new</span>
         <button type="button" class="icon-btn danger" data-remove-new>✕</button>
       </div>
     </template>
     <div class="actions">
-      <button type="button" class="btn" id="add-status">+ Add status</button>
-      <button class="btn btn-primary">Save statuses</button>
+      <button type="button" class="btn" id="add-status">+ Add stage</button>
+      <button class="btn btn-primary">Save stages</button>
     </div>
+  </form>
+
+  <form method="post" action="<?= e(url($base . '/statuses/template')) ?>" class="card stack" data-confirm="Replace this project’s stages with the template? Tasks move to the first new stage of the same kind (not started, in progress or done).">
+    <?= csrf_field() ?>
+    <h2 class="card-title">Switch to a template</h2>
+    <p class="hint">Replaces the stages above. Tasks keep their progress: not-started tasks go to the template’s first not-started stage, in-progress to its first in-progress stage, done to its first done stage. You can fine-tune afterwards.</p>
+    <?= \App\Core\View::partial('partials/template_picker', ['selected' => null]) ?>
+    <div class="actions"><button class="btn">Switch stages</button></div>
   </form>
 
   <dialog id="delete-status" class="dialog">
@@ -53,7 +62,7 @@ $types = ['open' => 'Not started', 'active' => 'In progress', 'done' => 'Done (s
         <p>It has <strong data-count></strong> tasks. Move them to:</p>
         <label class="field"><select name="move_to"><?php foreach ($statuses as $s): ?><option value="<?= (int) $s['id'] ?>"><?= e($s['name']) ?></option><?php endforeach; ?></select></label>
       </div>
-      <div class="actions"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-danger">Delete status</button></div>
+      <div class="actions"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-danger">Delete stage</button></div>
     </form>
   </dialog>
   <?php endif; ?>
