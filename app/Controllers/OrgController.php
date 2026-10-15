@@ -104,6 +104,46 @@ final class OrgController
         redirect("/o/{$o['slug']}/settings");
     }
 
+    /**
+     * Permanently delete an organization and everything in it: projects, tasks, comments,
+     * files and memberships. Owner only, confirmed by typing the organization's name.
+     * People's accounts stay (they may belong to other organizations).
+     */
+    public function destroy(string $org): never
+    {
+        $o = Access::org($org);
+        if (!Auth::isOwner()) {
+            abort(403, 'Only the Owner can delete an organization.');
+        }
+        if (trim((string) input('confirm_name')) !== $o['name']) {
+            flash('error', 'The name you typed didn’t match, so nothing was deleted.');
+            redirect("/o/{$o['slug']}/settings");
+        }
+        DB::transaction(function () use ($o) {
+            // Tasks first (their comments, files, assignees and history go with them), then the
+            // organization (its memberships, projects and stages go with it).
+            DB::query('UPDATE tasks SET parent_id = NULL WHERE project_id IN (SELECT id FROM projects WHERE org_id = ?)', [$o['id']]);
+            DB::query('DELETE FROM tasks WHERE project_id IN (SELECT id FROM projects WHERE org_id = ?)', [$o['id']]);
+            DB::query('DELETE FROM organizations WHERE id = ?', [$o['id']]);
+        });
+        self::removeDir(config('storage_path') . '/uploads/' . (int) $o['id']);
+        unset($_SESSION['last_org']);
+        flash('success', "“{$o['name']}” and everything in it was deleted.");
+        redirect('/');
+    }
+
+    private static function removeDir(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $items = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
+        foreach ($items as $item) {
+            $item->isDir() && !$item->isLink() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+        }
+        @rmdir($dir);
+    }
+
     /** Deleted tasks (and their subtasks) can be restored by the Owner or anyone who can delete any task. */
     public function trash(string $org): string
     {

@@ -44,6 +44,8 @@ Organization (e.g. Sportskeeda)
 - One person can be a member of several organizations, with different permissions in each.
 - Deactivate a member. They can no longer sign in, but their tasks, comments, and history stay and show their name as "(inactive)". Nobody is ever hard-deleted, so reports stay accurate.
 - Each organization's data is fully separate.
+- **Rename** an organization in its Settings (Owner, or members with *Organization settings*).
+- **Delete an organization** (Owner only): this permanently removes its projects, tasks, comments, files, and memberships. You confirm by typing the organization's name. People's accounts stay, because they may belong to other organizations.
 
 ### 5.1a Member permissions
 When adding or editing a member, the admin first picks a **starting preset** and can then tick or untick any individual permission. The member's exact checkboxes are what get saved, so every member can be set up differently.
@@ -120,6 +122,17 @@ A permission change takes effect on the member's next page load. The member's pr
 - Sort by any column. Uses the same filters as the board.
 - Edit fields directly in the row (status, assignee, priority, dates).
 - A **Board | List** toggle switches views and remembers the last one used per project.
+
+### 5.5a Files tab
+- A third tab next to **Board | List** shows every file shared in the project, on tasks, subtasks, and comments, newest first.
+- Each file shows a preview (images) or a file-type tile, its name, size, date, and who uploaded it, plus the task it belongs to. Clicking the task opens it.
+- Filter by type: Images, PDFs, Docs & sheets, Design files (.fig, .psd, .ai, .sketch …), Other. Search by file name or task title.
+- Members can delete their own files; members with *Delete anyone's comments and files* can delete any file.
+- Files deleted with their task or moved to Trash don't appear.
+
+### 5.5b Sidebar
+- The sidebar can collapse into a thin rail showing only icons, using the toggle at the top or the `[` key. Each browser remembers the choice.
+- In the rail, projects show as colored letter tiles. Hovering over or tabbing to any icon shows its name in a tooltip.
 
 ### 5.6 Task
 | Field | Notes |
@@ -230,7 +243,7 @@ This follows the same setup as Rare Flavours and Wear Human.
 
 ## 9. Later (not v1)
 
-@mentions + email notifications (assigned, mentioned) · tags · Google Sheets sync · recurring tasks · time tracking · calendar view · dashboards and charts inside the app · client guest access · dark mode
+@mentions + email notifications (assigned, mentioned) · project-level files and links (not attached to a task) · tags · Google Sheets sync · recurring tasks · time tracking · calendar view · dashboards and charts inside the app · client guest access · dark mode
 
 ## 10. Decisions log
 

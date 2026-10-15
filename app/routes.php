@@ -29,6 +29,7 @@ $router->post('/orgs', [OrgController::class, 'store']);
 $router->get('/o/{org}', [OrgController::class, 'show']);
 $router->get('/o/{org}/settings', [OrgController::class, 'settings']);
 $router->post('/o/{org}/settings', [OrgController::class, 'updateSettings']);
+$router->post('/o/{org}/delete', [OrgController::class, 'destroy']);
 $router->get('/o/{org}/trash', [OrgController::class, 'trash']);
 $router->post('/o/{org}/trash/{task}/restore', [OrgController::class, 'restore']);
 
@@ -62,6 +63,7 @@ $router->get('/files/{file}', [FileController::class, 'show']);
 // JSON API used by the board, list and task panel
 $router->get('/api/projects/{project}/tasks', [TaskApiController::class, 'index'], ['api']);
 $router->post('/api/projects/{project}/tasks', [TaskApiController::class, 'store'], ['api']);
+$router->get('/api/projects/{project}/files', [TaskApiController::class, 'files'], ['api']);
 $router->get('/api/tasks/{task}', [TaskApiController::class, 'show'], ['api']);
 $router->post('/api/tasks/{task}', [TaskApiController::class, 'update'], ['api']);
 $router->post('/api/tasks/{task}/move', [TaskApiController::class, 'move'], ['api']);

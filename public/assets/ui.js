@@ -25,3 +25,55 @@ document.addEventListener('submit', e => {
 });
 
 document.querySelectorAll('[data-autohide]').forEach(el => setTimeout(() => el.classList.add('is-hiding'), 4000));
+
+// Sidebar: full width or a thin icon rail. Remembered per browser.
+(() => {
+  const root = document.documentElement;
+  const btn = document.getElementById('side-toggle');
+  if (!btn) return;
+  const sync = () => {
+    const c = root.classList.contains('side-collapsed');
+    btn.dataset.tip = c ? 'Expand sidebar ([)' : 'Collapse sidebar ([)';
+    btn.setAttribute('aria-label', btn.dataset.tip);
+    btn.setAttribute('aria-expanded', String(!c));
+  };
+  const toggle = () => {
+    root.classList.toggle('side-collapsed');
+    try { localStorage.setItem('lpm:side', root.classList.contains('side-collapsed') ? 'collapsed' : 'open'); } catch (e) { /* ignore */ }
+    sync();
+  };
+  btn.addEventListener('click', toggle);
+  document.addEventListener('keydown', e => {
+    if (e.key === '[' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest('input, textarea, select, [contenteditable=true]')) toggle();
+  });
+  sync();
+})();
+
+// Sidebar tooltips: in the thin rail, hovering (or keyboard-focusing) an icon shows its name
+// to the right. Items marked data-tip-always (icon-only buttons) show it in both modes.
+(() => {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  const tip = document.createElement('div');
+  tip.className = 'side-tip';
+  tip.setAttribute('role', 'tooltip');
+  tip.hidden = true;
+  document.body.append(tip);
+  const show = el => {
+    const collapsed = document.documentElement.classList.contains('side-collapsed') && matchMedia('(min-width: 761px)').matches;
+    if (!el.dataset.tip || (!collapsed && !('tipAlways' in el.dataset))) return hide();
+    if (el.closest('details[open]')) return hide(); // the org menu is open
+    tip.textContent = el.dataset.tip;
+    tip.hidden = false;
+    const r = el.getBoundingClientRect();
+    tip.style.top = Math.round(r.top + r.height / 2 - tip.offsetHeight / 2) + 'px';
+    tip.style.left = Math.round(r.right + 10) + 'px';
+  };
+  const hide = () => { tip.hidden = true; };
+  sidebar.addEventListener('mouseover', e => { const el = e.target.closest('[data-tip]'); el ? show(el) : hide(); });
+  sidebar.addEventListener('mouseleave', hide);
+  sidebar.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el) show(el); });
+  sidebar.addEventListener('focusout', hide);
+  sidebar.addEventListener('click', hide);
+  sidebar.querySelector('.side-nav')?.addEventListener('scroll', hide);
+})();

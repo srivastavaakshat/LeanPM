@@ -261,6 +261,13 @@ function random_color(): string
     return $palette[array_rand($palette)];
 }
 
+/** A stable colour per project, for its letter tile in the sidebar. */
+function project_color(int $id): string
+{
+    $palette = ['#5b5bd6', '#0ea5e9', '#16a34a', '#f59e0b', '#db2777', '#7c3aed', '#0d9488', '#ea580c', '#2563eb', '#dc2626'];
+    return $palette[$id % count($palette)];
+}
+
 function random_password(int $length = 12): string
 {
     $chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';

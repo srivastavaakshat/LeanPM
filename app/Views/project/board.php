@@ -24,12 +24,24 @@ $base = '/o/' . $org['slug'] . '/p/' . $project['id'];
       <button type="button" data-view="list" role="tab">
         <svg class="i" viewBox="0 0 20 20"><path d="M7 5h10M7 10h10M7 15h10M3.5 5h.01M3.5 10h.01M3.5 15h.01"/></svg> List
       </button>
+      <button type="button" data-view="files" role="tab">
+        <svg class="i" viewBox="0 0 20 20"><path d="M6 3h5l4 4v9a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M11 3v4h4"/></svg> Files
+      </button>
     </div>
     </div>
   </header>
 
   <div class="toolbar">
     <label class="search"><svg class="i" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5"/><path d="M13 13l4 4"/></svg><input type="search" id="f-search" placeholder="Search tasks"></label>
+    <div class="file-filters" id="file-filters" hidden>
+      <button type="button" class="pill-select is-set" data-kind="">All</button>
+      <button type="button" class="pill-select" data-kind="image">Images</button>
+      <button type="button" class="pill-select" data-kind="pdf">PDFs</button>
+      <button type="button" class="pill-select" data-kind="doc">Docs &amp; sheets</button>
+      <button type="button" class="pill-select" data-kind="design">Design files</button>
+      <button type="button" class="pill-select" data-kind="other">Other</button>
+    </div>
+    <div class="task-filters" id="task-filters">
     <div class="filter" id="f-assignee"></div>
     <select id="f-priority" class="pill-select" aria-label="Priority">
       <option value="">Any priority</option>
@@ -46,6 +58,7 @@ $base = '/o/' . $org['slug'] . '/p/' . $project['id'];
     <label class="toggle-pill"><input type="checkbox" id="f-subtasks"> Show subtasks</label>
     <label class="toggle-pill"><input type="checkbox" id="f-hide-done"> Hide done</label>
     <button type="button" class="link-btn" id="f-clear" hidden>Clear filters</button>
+    </div>
   </div>
 
   <div id="view" class="view"></div>

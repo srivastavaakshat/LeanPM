@@ -23,7 +23,11 @@
     filters: { q: '', assignees: [], priority: '', due: '', subtasks: store.get(KEY + ':subtasks') === '1', hideDone: store.get(KEY + ':hideDone') === '1' },
     openId: null,
     detail: null,
+    files: null,        // the Files tab's list; null = needs (re)loading
+    filesLoading: false,
+    fileKind: '',
   };
+  if (!['board', 'list', 'files'].includes(state.view)) state.view = 'board';
   const members = new Map(boot.members.map(m => [m.id, m]));
   const activeMembers = () => boot.members.filter(m => m.active);
   const statusById = id => state.statuses.find(s => s.id === id);
@@ -117,6 +121,7 @@
       throw new Error(data.error || res.status);
     }
     (data.errors || []).forEach(e => toast(e, 'error'));
+    if (method !== 'GET') state.files = null;
     return data;
   }
   async function reloadTasks() {
@@ -189,6 +194,10 @@
       const opts = [{ id: 0, name: 'Unassigned', initials: '–', color: '#d1d5db', active: true }, ...boot.members];
       picker(btn, opts, state.filters.assignees, ids => { state.filters.assignees = ids; render(); });
     });
+    document.querySelectorAll('[data-kind]').forEach(b => b.addEventListener('click', () => {
+      state.fileKind = b.dataset.kind;
+      render();
+    }));
     document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
       state.view = b.dataset.view;
       store.set(KEY + ':view', state.view);
@@ -197,6 +206,11 @@
   }
   function syncToolbar() {
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('is-active', b.dataset.view === state.view));
+    const files = state.view === 'files';
+    $('task-filters').hidden = files;
+    $('file-filters').hidden = !files;
+    $('f-search').placeholder = files ? 'Search files or tasks' : 'Search tasks';
+    document.querySelectorAll('[data-kind]').forEach(b => b.classList.toggle('is-set', b.dataset.kind === state.fileKind));
     const fa = $('f-assignee').querySelector('button');
     const n = state.filters.assignees.length;
     fa.classList.toggle('is-set', n > 0);
@@ -463,12 +477,93 @@
       h('div', { class: 'cell', 'data-label': 'Status' }, statusSel));
   }
 
+  // ---------- FILES ----------
+  const EXT = {
+    doc: ['doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx', 'txt', 'md', 'rtf', 'pages', 'numbers', 'key', 'odt', 'ods', 'odp'],
+    design: ['fig', 'sketch', 'psd', 'psb', 'ai', 'xd', 'eps', 'svg', 'indd', 'afdesign', 'afphoto', 'aep', 'prproj', 'blend'],
+  };
+  const extOf = name => (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
+  const kindOf = f => {
+    const ext = extOf(f.name);
+    if (f.image || (f.mime || '').startsWith('image/')) return 'image';
+    if (f.mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+    if (EXT.doc.includes(ext)) return 'doc';
+    if (EXT.design.includes(ext)) return 'design';
+    return 'other';
+  };
+  const fmtSize = b => b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+
+  async function loadFiles() {
+    if (state.filesLoading) return;
+    state.filesLoading = true;
+    try {
+      const d = await api('GET', `/api/projects/${boot.project.id}/files`);
+      state.files = d.files;
+    } catch {
+      state.files = [];
+    } finally {
+      state.filesLoading = false;
+    }
+    if (state.view === 'files') render();
+  }
+
+  function renderFiles() {
+    const wrap = h('div', { class: 'files-view' });
+    if (state.files === null) {
+      loadFiles();
+      wrap.append(h('p', { class: 'muted pad' }, 'Loading files…'));
+      return wrap;
+    }
+    const q = state.filters.q.trim().toLowerCase();
+    const list = state.files.filter(f =>
+      (!state.fileKind || kindOf(f) === state.fileKind) &&
+      (!q || f.name.toLowerCase().includes(q) || f.task_title.toLowerCase().includes(q)));
+    const total = list.reduce((n, f) => n + f.bytes, 0);
+    wrap.append(h('div', { class: 'files-summary muted small' },
+      `${list.length} ${list.length === 1 ? 'file' : 'files'}` + (list.length ? ` · ${fmtSize(total)}` : '') +
+      (state.files.length !== list.length ? ` (of ${state.files.length})` : '')));
+    if (!state.files.length) {
+      wrap.append(h('div', { class: 'files-empty' },
+        h('strong', {}, 'No files in this project yet'),
+        h('p', { class: 'muted' }, 'Files added to any task or comment show up here, newest first. Open a task and use “Upload files”, or attach files to a comment.')));
+      return wrap;
+    }
+    if (!list.length) {
+      wrap.append(h('p', { class: 'muted pad' }, 'No files match.'));
+      return wrap;
+    }
+    const grid = h('div', { class: 'doc-grid' });
+    list.forEach(f => {
+      const ext = extOf(f.name);
+      grid.append(h('div', { class: 'doc' },
+        h('a', { href: f.url, target: '_blank', rel: 'noopener', class: 'doc-thumb', title: 'Open ' + f.name },
+          f.image ? h('img', { src: f.url, alt: '', loading: 'lazy' }) : h('span', { class: `file-ext kind-${kindOf(f)}` }, (ext || 'file').slice(0, 5).toUpperCase())),
+        h('div', { class: 'doc-info' },
+          h('a', { href: f.url, target: '_blank', rel: 'noopener', class: 'doc-name', title: f.name }, f.name),
+          h('div', { class: 'muted small' }, `${f.size} · ${fmtDate(f.created_at)} · ${f.user_name}`),
+          h('button', { type: 'button', class: 'doc-task', title: 'Open the task', onclick: () => openTask(f.task_id) },
+            svg(f.subtask ? ICON.sub : ICON.chat), h('span', { class: 'doc-task-title' }, f.task_title), f.comment_id ? h('span', { class: 'muted' }, ' · in a comment') : null)),
+        f.can_delete ? h('button', {
+          type: 'button', class: 'icon-btn small file-del', title: 'Delete file',
+          onclick: async () => {
+            if (!confirm(`Delete ${f.name}? It’s removed from its task too.`)) return;
+            const d = await api('POST', `/api/files/${f.id}/delete`);
+            upsert(d.task);
+            if (state.openId === f.task_id) { state.detail = d.task; renderDrawer(); }
+            render();
+          },
+        }, svg(ICON.x)) : null));
+    });
+    wrap.append(grid);
+    return wrap;
+  }
+
   // ---------- render ----------
   function render() {
     syncToolbar();
     const view = $('view');
     const scroll = view.firstElementChild ? [view.firstElementChild.scrollLeft, view.scrollTop] : null;
-    view.replaceChildren(state.view === 'list' ? renderList() : renderBoard());
+    view.replaceChildren(state.view === 'files' ? renderFiles() : state.view === 'list' ? renderList() : renderBoard());
     view.className = 'view view-' + state.view;
     if (scroll && view.firstElementChild) { view.firstElementChild.scrollLeft = scroll[0]; view.scrollTop = scroll[1]; }
   }

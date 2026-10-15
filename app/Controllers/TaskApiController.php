@@ -29,6 +29,30 @@ final class TaskApiController
         json_response(['tasks' => Tasks::forProject((int) $p['id']), 'statuses' => Tasks::statuses((int) $p['id'])]);
     }
 
+    /** Every file shared in the project: on tasks, subtasks and comments (the Files tab). */
+    public function files(string $project): never
+    {
+        $p = $this->project($project);
+        $rows = DB::all(
+            'SELECT a.*, t.title AS task_title, t.parent_id, u.name AS user_name
+             FROM attachments a
+             JOIN tasks t ON t.id = a.task_id
+             JOIN users u ON u.id = a.user_id
+             WHERE t.project_id = ? AND t.deleted_at IS NULL
+             ORDER BY a.created_at DESC, a.id DESC',
+            [$p['id']]
+        );
+        json_response(['files' => array_map(fn ($r) => Tasks::file($r) + [
+            'task_id'    => (int) $r['task_id'],
+            'task_title' => $r['task_title'],
+            'subtask'    => $r['parent_id'] !== null,
+            'user_name'  => $r['user_name'],
+            'created_at' => $r['created_at'],
+            'mime'       => $r['mime'],
+            'bytes'      => (int) $r['size'],
+        ], $rows)]);
+    }
+
     public function store(string $project): never
     {
         $p = $this->project($project);
