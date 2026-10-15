@@ -220,7 +220,7 @@ A permission change takes effect on the member's next page load. The member's pr
   - A "Parent task" title makes the row a subtask.
   - Done-stage tasks get their completed date from the file, or today.
 - **Afterwards:** a report lists anything that couldn't be matched (stages, people, dates, field values, rows with no title). The imported tasks themselves are kept.
-- **Limits and permissions:** up to 2,000 rows or 5 MB per file. Columns the person isn't allowed to set (assignees, priority/dates/fields) are skipped and reported. The project's settings offer a sample CSV with its stages and fields.
+- **Limits and permissions:** up to 2,000 rows or 5 MB per file. Columns the person isn't allowed to set (assignees, priority/dates/fields) are skipped and reported. The import page offers a sample CSV with the project's stages and fields.
 
 ## 6. Data model (draft)
 
