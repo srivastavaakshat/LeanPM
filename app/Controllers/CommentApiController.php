@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Database as DB;
 use App\Services\Access;
 use App\Services\Activity;
+use App\Services\Mentions;
 use App\Services\Tasks;
 use App\Services\Uploads;
 
@@ -37,6 +38,10 @@ final class CommentApiController
                 }
             }
             DB::update('tasks', ['updated_at' => now()], 'id = ?', [$t['id']]);
+            if ($body !== '') {
+                $people = Mentions::candidates((int) Access::$org['id'], (int) $t['project_id']);
+                Mentions::notify($t, Mentions::inText($body, $people), 'comment', $body, $people);
+            }
         });
         json_response(['task' => Tasks::detail(Access::task((int) $t['id'])), 'errors' => $errors]);
     }
@@ -52,6 +57,13 @@ final class CommentApiController
             abort(422, 'A comment can’t be empty. Delete it instead.');
         }
         DB::update('comments', ['body' => $body, 'edited_at' => now()], 'id = ?', [$c['id']]);
+        // Editing a comment emails only people who weren't mentioned in it before.
+        $task = Access::task((int) $c['task_id']);
+        $people = Mentions::candidates((int) Access::$org['id'], (int) $task['project_id']);
+        $added = array_diff(Mentions::inText($body, $people), Mentions::inText($c['body'], $people));
+        if ($added) {
+            Mentions::notify($task, $added, 'comment', $body, $people);
+        }
         json_response(['task' => Tasks::detail(Access::task((int) $c['task_id']))]);
     }
 

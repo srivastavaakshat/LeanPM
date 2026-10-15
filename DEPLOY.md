@@ -139,6 +139,29 @@ chmod -R 775 storage
 
 Sign in, then **+ New organization** → `Sportskeeda` → go to **Members** → **+ Add member** for each designer. Each new member gets a temporary password to send them; they choose their own at first sign-in.
 
+## Step 9: @mention emails
+
+When someone types `@Name` in a comment or a description, that person gets an email. Each person can turn this off under **Your account**.
+
+1. **Create a mailbox.** hPanel → **Emails** → on `houseofjugaad.com` create `pm@houseofjugaad.com` and set a password.
+2. **Add it to the server config.** Over SSH, run `nano config/local.php` and add the `mail` block from `config/local.example.php` with that mailbox's password. Save.
+3. **Deliverability.** hPanel → Emails → `houseofjugaad.com`: make sure **SPF**, **DKIM** and **DMARC** are set up (Hostinger offers one-click fixes). Without them, Gmail may put the emails in spam.
+4. **Cron job (fallback).** The app sends right away, but a cron job retries anything that failed. hPanel → **Advanced → Cron Jobs** → Custom, every 5 minutes (`*/5 * * * *`):
+
+```bash
+/usr/bin/php /home/YOUR-USER/domains/houseofjugaad.com/public_html/pm/bin/send-emails.php
+```
+
+5. **Check it.** Over SSH, run this to see whether mail is configured and whether anything is stuck:
+
+```bash
+php bin/send-emails.php --status
+```
+
+Then @mention a teammate on a test task.
+
+Until the mailbox is configured, emails aren't sent. They're written to `storage/logs/mail.log` instead.
+
 ---
 
 ## Everyday updates

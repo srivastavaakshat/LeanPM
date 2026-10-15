@@ -349,6 +349,10 @@ select.pill-select { padding-right: 24px; }
 .doc-task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .doc-task .muted { flex: none; }
 
+/* @mentions */
+.mention { display: inline-block; padding: 0 5px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); font-weight: 600; white-space: nowrap; }
+.mention-pop { width: 240px; z-index: 95; }
+
 /* popovers */
 .popover { position: absolute; z-index: 80; width: 250px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 6px; }
 .popover.wide { width: 350px; }

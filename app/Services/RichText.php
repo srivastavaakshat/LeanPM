@@ -9,7 +9,7 @@ namespace App\Services;
  */
 final class RichText
 {
-    private const ALLOWED = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'ul', 'ol', 'li', 'a', 'h2', 'h3', 'blockquote', 'code', 'pre', 'div'];
+    private const ALLOWED = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'ul', 'ol', 'li', 'a', 'h2', 'h3', 'blockquote', 'code', 'pre', 'div', 'span'];
 
     public static function clean(?string $html): ?string
     {
@@ -52,9 +52,22 @@ final class RichText
                     $node->removeChild($child);
                     continue;
                 }
+                // The only span kept is an @mention chip: <span class="mention" data-user="12">@Name</span>
+                if ($tag === 'span' && !($child->getAttribute('class') === 'mention' && ctype_digit($child->getAttribute('data-user')))) {
+                    while ($child->firstChild) {
+                        $node->insertBefore($child->firstChild, $child);
+                    }
+                    $node->removeChild($child);
+                    continue;
+                }
+                $user = $tag === 'span' ? $child->getAttribute('data-user') : '';
                 $href = $tag === 'a' ? $child->getAttribute('href') : '';
                 foreach (iterator_to_array($child->attributes) as $attr) {
                     $child->removeAttribute($attr->name);
+                }
+                if ($tag === 'span') {
+                    $child->setAttribute('class', 'mention');
+                    $child->setAttribute('data-user', $user);
                 }
                 if ($tag === 'a') {
                     if (preg_match('#^(https?://|mailto:)#i', trim($href))) {
@@ -69,11 +82,12 @@ final class RichText
         }
     }
 
-    /** Plain-text comment → safe HTML with clickable links and line breaks. */
-    public static function comment(string $text): string
+    /** Plain-text comment → safe HTML with clickable links, highlighted @mentions and line breaks. */
+    public static function comment(string $text, array $mentionable = []): string
     {
         $html = e($text);
         $html = preg_replace('#\bhttps?://[^\s<]+[^\s<.,;:!?)\]\'"]#i', '<a href="$0" target="_blank" rel="noopener noreferrer">$0</a>', $html) ?? $html;
+        $html = Mentions::highlight($html, $mentionable);
         return nl2br($html);
     }
 }

@@ -163,6 +163,13 @@ A permission change takes effect on the member's next page load. The member's pr
 - Edit or delete your own comments; edits are marked "edited".
 - Comments show in the Activity panel in time order, alongside system events.
 
+### 5.8a @mentions
+- Type `@` in a comment or in a task description to open a list of the people who can open that project. Arrow keys plus Enter (or a click) inserts the person.
+- Mentions are highlighted in comments and appear as chips in descriptions. The task's history records "mentioned Ravi Dutta".
+- Each mentioned person gets one email: who mentioned them, the task, the text, and a button that opens the task. Editing a comment or description only emails people who weren't already mentioned in it. Nobody gets an email for mentioning themselves.
+- Emails are queued and sent right after the save, with a cron job retrying any that failed. They go out from a Hostinger mailbox over SMTP.
+- Each person can turn mention emails off under Your account.
+
 ### 5.9 Attachments
 - Upload files to a task or to a comment by drag-and-drop or the file picker.
 - Files are stored on the Hostinger server, not a third-party service.
@@ -243,9 +250,10 @@ This follows the same setup as Rare Flavours and Wear Human.
 
 ## 9. Later (not v1)
 
-@mentions + email notifications (assigned, mentioned) · project-level files and links (not attached to a task) · tags · Google Sheets sync · recurring tasks · time tracking · calendar view · dashboards and charts inside the app · client guest access · dark mode
+email when you're assigned a task · project-level files and links (not attached to a task) · tags · Google Sheets sync · recurring tasks · time tracking · calendar view · dashboards and charts inside the app · client guest access · dark mode
 
 ## 10. Decisions log
 
 - **15 Oct 2026:** No online/presence indicators.
 - **15 Oct 2026:** Email notifications (assignment and @mentions) ship together in a later version. They need a Hostinger mailbox and a cron job.
+- **15 Oct 2026:** @mentions with email moved into v1 (comments and descriptions). Assignment emails stay in a later version.

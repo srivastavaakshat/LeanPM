@@ -40,7 +40,10 @@ final class AccountController
 
     public function show(): string
     {
-        return view('auth/account', ['title' => 'Your account', 'user' => Auth::user(), 'orgs' => \App\Services\Access::myOrgs()]);
+        return view('auth/account', [
+            'title' => 'Your account', 'user' => Auth::user(), 'orgs' => \App\Services\Access::myOrgs(),
+            'notify' => (int) DB::value('SELECT notify_mentions FROM users WHERE id = ?', [Auth::id()]),
+        ]);
     }
 
     public function update(): never
@@ -50,7 +53,7 @@ final class AccountController
             with_input_errors(['name' => 'Please enter your name.']);
             redirect('/account');
         }
-        DB::update('users', ['name' => $name], 'id = ?', [Auth::id()]);
+        DB::update('users', ['name' => $name, 'notify_mentions' => input('notify_mentions') === '1' ? 1 : 0], 'id = ?', [Auth::id()]);
         flash('success', 'Saved.');
         redirect('/account');
     }

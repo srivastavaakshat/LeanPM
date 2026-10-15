@@ -711,6 +711,8 @@
       'data-placeholder': t.can.edit ? 'Add a description: goals, links, references…' : 'No description.',
       html: t.description || '',
     });
+    desc.querySelectorAll('.mention').forEach(m => { m.contentEditable = 'false'; });
+    if (t.can.edit) mentionEditable(desc);
     desc.addEventListener('input', () => {
       desc.classList.toggle('is-empty', !desc.textContent.trim() && !desc.querySelector('li'));
       descPending = { id: t.id, html: desc.innerHTML };
@@ -844,6 +846,7 @@
     if (c.can_edit) actions.append(h('button', {
       type: 'button', class: 'link-btn', onclick: () => {
         const ta = h('textarea', { rows: 3 }, c.body);
+        mentionTextarea(ta);
         const save = h('button', { type: 'button', class: 'btn btn-sm btn-primary', onclick: async () => {
           if (!ta.value.trim()) return;
           const d = await api('POST', `/api/comments/${c.id}`, { body: ta.value });
@@ -868,7 +871,8 @@
   }
 
   function commentBox(t, draft) {
-    const ta = h('textarea', { rows: 2, placeholder: 'Write a comment… (Ctrl+Enter to send)', maxlength: 10000 }, draft || '');
+    const ta = h('textarea', { rows: 2, placeholder: 'Write a comment… Type @ to mention someone. Ctrl+Enter sends.', maxlength: 10000 }, draft || '');
+    mentionTextarea(ta);
     const fileInput = h('input', { type: 'file', multiple: true, hidden: true });
     const chosen = h('div', { class: 'chosen-files' });
     fileInput.addEventListener('change', () => {
@@ -931,6 +935,113 @@
     openPicker = pop;
     search.focus();
     load();
+  }
+
+  // ---------- @mentions ----------
+  // Typing @ in a comment or description lists the people who can open this project.
+  const mentionable = () => boot.mentionable.map(id => members.get(id)).filter(Boolean);
+  const mention = { pop: null, items: [], index: 0, pick: null };
+  const MENTION_QUERY = /(?:^|[\s(])@([^@\n]{0,30})$/u;
+
+  function mentionMatches(q) {
+    q = q.toLowerCase();
+    return mentionable().filter(m => !q || m.name.toLowerCase().startsWith(q) || m.name.toLowerCase().split(/\s+/).some(w => w.startsWith(q)))
+      .slice(0, 8);
+  }
+  function closeMention() { mention.pop?.remove(); mention.pop = null; mention.items = []; mention.pick = null; }
+  function drawMention() {
+    mention.pop.replaceChildren(...mention.items.map((m, i) => h('button', {
+      type: 'button', class: 'picker-item' + (i === mention.index ? ' is-on' : ''),
+      onmousedown: e => { e.preventDefault(); mention.pick(m); },
+    }, h('span', { class: 'avatar sm', style: `--c:${m.color}` }, m.initials), h('span', { class: 'grow' }, m.name))));
+  }
+  function openMention(rect, items, pick) {
+    if (!items.length) return closeMention();
+    if (!mention.pop) {
+      mention.pop = h('div', { class: 'popover mention-pop' });
+      document.body.append(mention.pop);
+    }
+    mention.items = items;
+    mention.index = Math.min(mention.index, items.length - 1);
+    mention.pick = m => { pick(m); closeMention(); };
+    drawMention();
+    const below = rect.bottom + 6 + mention.pop.offsetHeight < innerHeight;
+    mention.pop.style.top = (below ? rect.bottom + 6 : rect.top - mention.pop.offsetHeight - 6) + scrollY + 'px';
+    mention.pop.style.left = Math.max(8, Math.min(rect.left, innerWidth - 260)) + scrollX + 'px';
+  }
+  /** Arrow keys / Enter / Tab / Escape while the list is open. Returns true when handled. */
+  function mentionKey(e) {
+    if (!mention.pop) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      mention.index = (mention.index + (e.key === 'ArrowDown' ? 1 : -1) + mention.items.length) % mention.items.length;
+      drawMention();
+    } else if ((e.key === 'Enter' && !e.ctrlKey && !e.metaKey) || e.key === 'Tab') {
+      mention.pick(mention.items[mention.index]);
+    } else if (e.key === 'Escape') {
+      closeMention();
+    } else {
+      return false;
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return true;
+  }
+
+  function mentionTextarea(ta) {
+    const check = () => {
+      const before = ta.value.slice(0, ta.selectionStart);
+      const m = before.match(MENTION_QUERY);
+      if (!m || ta.selectionStart !== ta.selectionEnd) return closeMention();
+      mention.index = 0;
+      const r = ta.getBoundingClientRect();
+      openMention({ top: r.top, bottom: r.bottom, left: r.left + 8 }, mentionMatches(m[1]), person => {
+        const start = ta.selectionStart - m[1].length - 1;
+        const insert = '@' + person.name + ' ';
+        ta.value = ta.value.slice(0, start) + insert + ta.value.slice(ta.selectionStart);
+        ta.selectionStart = ta.selectionEnd = start + insert.length;
+        ta.focus();
+      });
+    };
+    ta.addEventListener('keydown', mentionKey, true);
+    ta.addEventListener('input', check);
+    ta.addEventListener('click', check);
+    ta.addEventListener('blur', () => setTimeout(closeMention, 150));
+  }
+
+  function mentionEditable(el) {
+    const check = () => {
+      const sel = getSelection();
+      if (!sel.rangeCount || !sel.isCollapsed) return closeMention();
+      const range = sel.getRangeAt(0);
+      const node = range.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE || !el.contains(node)) return closeMention();
+      const before = node.textContent.slice(0, range.startOffset);
+      const m = before.match(MENTION_QUERY);
+      if (!m) return closeMention();
+      mention.index = 0;
+      const at = document.createRange();
+      at.setStart(node, range.startOffset - m[1].length - 1);
+      at.setEnd(node, range.startOffset);
+      const rect = at.getBoundingClientRect();
+      openMention(rect, mentionMatches(m[1]), person => {
+        at.deleteContents();
+        const chip = h('span', { class: 'mention', 'data-user': person.id, contenteditable: 'false' }, '@' + person.name);
+        const space = document.createTextNode('\u00a0');
+        at.insertNode(space);
+        at.insertNode(chip);
+        const after = document.createRange();
+        after.setStart(space, 1);
+        after.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(after);
+        el.dispatchEvent(new Event('input'));
+      });
+    };
+    el.addEventListener('keydown', mentionKey, true);
+    el.addEventListener('input', e => { if (e.isTrusted) check(); });
+    el.addEventListener('keyup', e => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) check(); });
+    el.addEventListener('click', check);
+    el.addEventListener('blur', () => setTimeout(closeMention, 150));
   }
 
   // ---------- start ----------

@@ -7,6 +7,16 @@ return [
     'base_path'  => '',
     'clean_urls' => true,
     'app_key'    => 'paste-a-long-random-string-here',   // php -r "echo bin2hex(random_bytes(32));"
+    // @mention emails. Create a mailbox in hPanel → Emails (e.g. pm@houseofjugaad.com) and put its password here.
+    'mail' => [
+        'host'      => 'smtp.hostinger.com',
+        'port'      => 465,                          // 465 = SSL
+        'username'  => 'pm@houseofjugaad.com',
+        'password'  => 'PASTE-THE-MAILBOX-PASSWORD',
+        'from'      => 'pm@houseofjugaad.com',
+        'from_name' => 'LeanPM',
+        'reply_to'  => '',                           // optional, e.g. your own address
+    ],
     'database' => [
         'driver'   => 'mysql',
         'host'     => 'localhost',

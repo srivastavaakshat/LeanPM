@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Database as DB;
 use App\Services\Access;
 use App\Services\Activity;
+use App\Services\Mentions;
 use App\Services\RichText;
 use App\Services\Tasks;
 
@@ -124,6 +125,12 @@ final class TaskApiController
                 $html = RichText::clean(is_string($in['description']) ? $in['description'] : null);
                 if ($html !== $t['description']) {
                     $set['description'] = $html;
+                    // Email only people who weren't already mentioned before this save.
+                    $people = Mentions::candidates((int) Access::$org['id'], (int) $t['project_id']);
+                    $added = array_diff(Mentions::inHtml($html, $people), Mentions::inHtml($t['description'], $people));
+                    if ($added) {
+                        Mentions::notify($t, $added, 'description', html_entity_decode(strip_tags(preg_replace('#</(p|h2|h3|li|div|blockquote|pre)>|<br\s*/?>#i', ' ', (string) $html) ?? ''), ENT_QUOTES, 'UTF-8'), $people);
+                    }
                     // One history line per editing session, not per keystroke save.
                     $recent = DB::one("SELECT id FROM activity WHERE task_id = ? AND action = 'description' AND user_id = ? AND created_at > ?", [$t['id'], Auth::id(), date('Y-m-d H:i:s', time() - 600)]);
                     if (!$recent) {

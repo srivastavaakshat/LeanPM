@@ -49,6 +49,8 @@ final class ProjectController
             'tasks'    => Tasks::forProject((int) $p['id']),
             'members'  => array_map(fn ($m) => ['id' => (int) $m['id'], 'name' => $m['name'], 'color' => $m['color'], 'initials' => initials($m['name']), 'active' => (bool) $m['active']], $members),
             'me'       => Auth::id(),
+            // People who can open this project, offered when typing @ (the server checks again).
+            'mentionable' => array_keys(\App\Services\Mentions::candidates((int) $o['id'], (int) $p['id'])),
             'can'      => [
                 'create'   => Access::can('create_tasks'),
                 'comment'  => Access::can('comment'),

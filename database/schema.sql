@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     must_change_password TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     last_login_at DATETIME NULL,
+    notify_mentions TINYINT(1) NOT NULL DEFAULT 1,
     UNIQUE KEY users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -139,7 +140,7 @@ CREATE TABLE IF NOT EXISTS attachments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Task history. action: created, status, assignee_added, assignee_removed, priority, start_date,
--- due_date, title, subtask_added, subtask_removed, file_added, deleted, restored.
+-- due_date, title, mentioned, subtask_added, subtask_removed, file_added, deleted, restored.
 CREATE TABLE IF NOT EXISTS activity (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     task_id INT UNSIGNED NOT NULL,
@@ -150,6 +151,21 @@ CREATE TABLE IF NOT EXISTS activity (
     created_at DATETIME NOT NULL,
     KEY activity_task (task_id),
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Outgoing email (e.g. @mention notifications). Sent right after the request, plus a cron fallback.
+CREATE TABLE IF NOT EXISTS email_queue (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    to_email VARCHAR(190) NOT NULL,
+    to_name VARCHAR(120) NOT NULL DEFAULT '',
+    subject VARCHAR(255) NOT NULL,
+    body_text TEXT NOT NULL,
+    body_html MEDIUMTEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    sent_at DATETIME NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    KEY email_queue_pending (sent_at, attempts)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS login_attempts (

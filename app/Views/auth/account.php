@@ -5,6 +5,7 @@
     <div class="row-center"><?= avatar($user, 'lg') ?><div><strong><?= e($user['name']) ?></strong><div class="muted"><?= e($user['email']) ?></div></div></div>
     <label class="field"><span>Name</span><input name="name" value="<?= e($user['name']) ?>" required maxlength="120"></label>
     <?= error_for('name') ?>
+    <label class="check"><input type="hidden" name="notify_mentions" value="0"><input type="checkbox" name="notify_mentions" value="1" <?= $notify ? 'checked' : '' ?>> Email me when someone @mentions me</label>
     <div class="actions"><a class="btn" href="<?= e(url('/account/password')) ?>">Change password</a><button class="btn btn-primary">Save</button></div>
   </form>
   <?php if ($orgs): ?>

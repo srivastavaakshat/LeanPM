@@ -40,6 +40,7 @@ final class Activity
             'subtask_removed'  => "removed subtask “{$from}”",
             'parent_set'       => "made this a subtask of “{$to}”",
             'parent_removed'   => "detached this from “{$from}”",
+            'mentioned'        => "mentioned {$to}",
             'file_added'       => "attached {$to}",
             'file_removed'     => "removed {$from}",
             'deleted'          => 'moved this task to Trash',

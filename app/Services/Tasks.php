@@ -199,11 +199,12 @@ final class Tasks
             $feed[] = ['type' => 'event', 'user_id' => $a['user_id'] !== null ? (int) $a['user_id'] : null, 'text' => Activity::describe($a), 'at' => $a['created_at'], 'sort' => $a['created_at'] . '-0-' . $a['id']];
         }
         $uid = Auth::id();
+        $mentionable = Mentions::candidates((int) Access::$org['id'], (int) $task['project_id']);
         foreach (DB::all('SELECT * FROM comments WHERE task_id = ? ORDER BY id', [$id]) as $c) {
             $mine = (int) $c['user_id'] === $uid;
             $feed[] = [
                 'type' => 'comment', 'id' => (int) $c['id'], 'user_id' => (int) $c['user_id'],
-                'body' => $c['body'], 'html' => RichText::comment($c['body']), 'at' => $c['created_at'], 'edited' => $c['edited_at'] !== null,
+                'body' => $c['body'], 'html' => RichText::comment($c['body'], $mentionable), 'at' => $c['created_at'], 'edited' => $c['edited_at'] !== null,
                 'files' => $byComment[(int) $c['id']] ?? [],
                 'can_edit' => $mine, 'can_delete' => $mine || Access::can('moderate'),
                 'sort' => $c['created_at'] . '-1-' . $c['id'],
