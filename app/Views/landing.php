@@ -6,6 +6,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
 <!doctype html>
 <html lang="en">
 <head>
+<script>document.documentElement.classList.add('js');</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LeanPM · A lean, self-hosted project manager</title>
@@ -54,15 +55,16 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
           <?php
           $cols = [
             ['To do', '#94a3b8', [['Moodboard for the spring campaign', 'NK', '#e0663a', '18 Nov', 'High', '2/4'], ['Icon set: sports categories', 'RV', '#2f9e78', '21 Nov', null, null]]],
-            ['In progress', '#5b8def', [['Homepage hero, three directions', 'AS', '#14213D', 'Today', 'Urgent', '1/3'], ['App store screenshots', 'PM', '#c2410c', '20 Nov', null, null]]],
-            ['In review', '#e8a33d', [['Newsletter template v2', 'RV', '#2f9e78', '15 Nov', 'High', null]]],
+            ['In progress', '#5b8def', [['Homepage hero, three directions', 'AS', '#14213D', 'Today', 'Urgent', '1/3']]],
+            // Being dragged into review right now: lifted, tilted, and the column lights up.
+            ['In review', '#e8a33d', [['App store screenshots', 'PM', '#c2410c', '20 Nov', null, null, true], ['Newsletter template v2', 'RV', '#2f9e78', '15 Nov', 'High', null]]],
             ['Done', '#2f9e78', [['Brand colours, final', 'AS', '#14213D', null, null, '4/4'], ['Social banner sizes', 'NK', '#e0663a', null, null, null]]],
           ];
           foreach ($cols as [$name, $color, $cards]): ?>
-          <div class="m-col">
+          <div class="m-col<?= array_filter($cards, fn ($c) => !empty($c[6])) ? ' is-target' : '' ?>">
             <div class="m-col-head"><span class="m-stage" style="--c:<?= $color ?>"></span><?= $name ?><span class="m-count"><?= count($cards) ?></span></div>
-            <?php foreach ($cards as [$t, $i, $c, $due, $prio, $sub]): ?>
-            <div class="m-card<?= $name === 'Done' ? ' is-done' : '' ?>">
+            <?php foreach ($cards as $card): [$t, $i, $c, $due, $prio, $sub] = $card; ?>
+            <div class="m-card<?= $name === 'Done' ? ' is-done' : '' ?><?= !empty($card[6]) ? ' is-lifted' : '' ?>">
               <p><?= $t ?></p>
               <div class="m-meta">
                 <?= $av($i, $c) ?>
@@ -80,7 +82,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
   </section>
 
   <section class="why" id="why">
-    <div class="wrap why-in">
+    <div class="wrap reveal why-in">
       <div class="why-me">
         <span class="me-mark" aria-hidden="true">AS</span>
         <div>
@@ -102,7 +104,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
   </section>
 
   <section class="feature" id="board">
-    <div class="wrap feature-in">
+    <div class="wrap feature-in reveal">
       <div class="feature-text">
         <p class="kicker">Board &amp; list</p>
         <h2>A board for the day, a list for the details.</h2>
@@ -132,7 +134,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
   </section>
 
   <section class="feature feature-alt" id="notes">
-    <div class="wrap feature-in">
+    <div class="wrap feature-in reveal">
       <div class="feature-text">
         <p class="kicker">Meeting notes</p>
         <h2>Meeting notes that turn into tasks.</h2>
@@ -174,7 +176,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
   </section>
 
   <section class="feature" id="reports">
-    <div class="wrap feature-in">
+    <div class="wrap feature-in reveal">
       <div class="feature-text">
         <p class="kicker">Reports</p>
         <h2>The monthly report, in one click.</h2>
@@ -214,7 +216,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
   <section class="extras">
     <div class="wrap">
       <h2 class="center">Also in the box</h2>
-      <div class="grid">
+      <div class="grid reveal">
         <div class="tile"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="2"/><rect x="13" y="4" width="8" height="7" rx="2"/><rect x="3" y="13" width="8" height="7" rx="2"/><rect x="13" y="13" width="8" height="7" rx="2"/></svg></span><h3>Several organizations</h3><p>One for each team or client, each with its own members, projects and data.</p></div>
         <div class="tile"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>Permissions per person</h3><p>Start from Admin, Lead, Designer or Viewer, then switch single permissions on or off.</p></div>
         <div class="tile"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></span><h3>Comments and files</h3><p>Updates on every task, with files stored on your own server.</p></div>
@@ -226,7 +228,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
   </section>
 
   <section class="build" id="build">
-    <div class="wrap build-in">
+    <div class="wrap reveal build-in">
       <div class="build-text">
         <img class="build-icon" src="<?= e(asset('icon.svg')) ?>" alt="" width="48" height="48">
         <h2>Build your own LeanPM.</h2>
@@ -260,5 +262,14 @@ php -S localhost:8090 -t public public/router.php</code></pre>
   </div>
 </footer>
 
+<script>
+// Sections fade up as they scroll into view.
+(() => {
+  const els = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window)) { els.forEach(e => e.classList.add('is-in')); return; }
+  const io = new IntersectionObserver(entries => entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('is-in'); io.unobserve(en.target); } }), { threshold: .12 });
+  els.forEach(e => io.observe(e));
+})();
+</script>
 </body>
 </html>

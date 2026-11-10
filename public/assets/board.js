@@ -379,7 +379,7 @@
     document.body.append(d.ghost);
     d.el.replaceWith(d.slot);
     document.body.classList.add('is-dragging-card');
-    navigator.vibrate?.(8);
+    if (navigator.userActivation?.isActive) navigator.vibrate?.(8);
     requestAnimationFrame(() => d.ghost.classList.add('is-lifted'));
     frame();
     d.scroller = setInterval(() => autoScroll(d), 16);
