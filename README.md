@@ -11,7 +11,7 @@ php bin/install.php --fresh --seed --owner-email=you@example.com --owner-name="Y
 php -S localhost:8090 -t public public/router.php
 ```
 
-Open http://localhost:8090. The Owner password is printed once and saved to `storage/local-admin.txt` (git-ignored). `--seed` adds a demo **Sportskeeda** organization with sample members and the tasks from the old ClickUp board.
+Open http://localhost:8090. The Owner password is printed once and saved to `storage/local-admin.txt` (git-ignored). `--seed` adds a demo **Acme Studio** organization with sample members and tasks.
 
 ## What's where
 

@@ -18,7 +18,7 @@ final class Tasks
     public const TEMPLATES = [
         'design' => [
             'label' => 'Design task',
-            'hint'  => 'Your current ClickUp flow: brief in, design, review, revise, approve.',
+            'hint'  => 'Brief in, design, review, revise, approve.',
             'stages' => [
                 ['Requested', '#8b8f98', 'open'],
                 ['In Progress', '#0ea5e9', 'active'],

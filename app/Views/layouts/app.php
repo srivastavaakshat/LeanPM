@@ -141,7 +141,7 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
   <form method="post" action="<?= e(url('/o/' . $org['slug'] . '/projects')) ?>">
     <?= csrf_field() ?>
     <h2>New project</h2>
-    <label class="field"><span>Name</span><input name="name" required maxlength="120" placeholder="e.g. Cricrocket redesign" autofocus></label>
+    <label class="field"><span>Name</span><input name="name" required maxlength="120" placeholder="e.g. Website redesign" autofocus></label>
     <div class="field"><span>Template</span>
       <?= \App\Core\View::partial('partials/template_picker', ['selected' => 'design']) ?>
     </div>

@@ -11,7 +11,7 @@ Design teams track work in ClickUp or Trello, but those tools are heavy, expensi
 1. Run the team's design work from a Kanban board and a list view.
 2. Keep every task's history (comments, files, status changes) in one place so it can be picked up again later.
 3. Export work to CSV, filtered by team member and date range, for reports such as "what did Ravi ship in the last 3 months?"
-4. Support several organizations (e.g. Sportskeeda), each with its own data.
+4. Support several organizations (e.g. one per client), each with its own data.
 5. Run on the existing Hostinger account.
 
 **Non-goals for v1:** Google Sheets sync, time tracking, automations, AI, docs/wiki, chat, mobile apps, integrations, guest/client access, billing.
@@ -24,7 +24,7 @@ Design teams track work in ClickUp or Trello, but those tools are heavy, expensi
 ## 4. Structure
 
 ```
-Organization (e.g. Sportskeeda)
+Organization (e.g. Acme Studio)
  └── Project (e.g. "Creative & Design Hub")
       └── Task
            ├── Subtasks (tasks with a parent)
@@ -61,7 +61,7 @@ Organization (e.g. Sportskeeda)
 - Google sign-in is **only for people already added as members**. The Google account's verified email must match their LeanPM email, or the Google account they connected under Your account. It never creates accounts.
 - The first Google sign-in links that Google account to the user. A member who signs in with Google never has to replace their temporary password.
 - Under Your account, a member can connect or disconnect Google. Connecting is how someone whose Google email differs from their LeanPM email can use Google.
-- **Optional:** allow only certain email domains (e.g. sportskeeda.com).
+- **Optional:** allow only certain email domains (e.g. example.com).
 - **Security:** sign-in uses Google's standard OpenID Connect flow and checks that the request started in LeanPM and isn't replayed. It also checks that Google issued the sign-in to LeanPM, hasn't expired, and that the email is verified. Deactivated members can't sign in this way either.
 
 ### 5.1a Member permissions
@@ -121,7 +121,7 @@ A permission change takes effect on the member's next page load. The member's pr
 
 | Template | Stages | Starting fields (5.6a) |
 |---|---|---|
-| **Design task** (default, the current ClickUp flow) | Requested → In Progress → For Review → Revisions → Approved | Figma file (link) |
+| **Design task** (default) | Requested → In Progress → For Review → Revisions → Approved | Figma file (link) |
 | **Project management** | Backlog → To Do → In Progress → Blocked → Done | Doc link (link), Estimate (hours) (number) |
 | **Task review** | Submitted → In Review → Changes Requested → Approved / Rejected | Submission link (link), Reviewer (text) |
 

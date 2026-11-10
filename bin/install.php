@@ -5,7 +5,7 @@
  *   php bin/install.php --owner-email=you@example.com --owner-name="Akshat Srivastava"
  *   php bin/install.php --fresh --seed --owner-email=you@example.com   (local only: wipes everything first)
  *
- *  --seed   adds a demo "Sportskeeda" organization with sample members and tasks
+ *  --seed   adds a demo "Acme Studio" organization with sample members and tasks
  *  --fresh  drops every table first. Refused when env = production.
  * The Owner's password is printed once (and saved to storage/local-admin.txt when env = local).
  */
@@ -82,7 +82,7 @@ if (!$owner) {
 
 // 3. Demo data
 if (isset($opts['seed'])) {
-    if (DB::value("SELECT COUNT(*) FROM organizations WHERE slug = 'sportskeeda'")) {
+    if (DB::value("SELECT COUNT(*) FROM organizations WHERE slug = 'acme-studio'")) {
         $out('Demo organization already exists; skipped.');
         exit(0);
     }
@@ -91,7 +91,7 @@ if (isset($opts['seed'])) {
         $at = fn (int $daysAgo, int $h = 11) => date('Y-m-d H:i:s', $now - $daysAgo * 86400 + ($h - 11) * 3600);
         $day = fn (int $offset) => date('Y-m-d', $now + $offset * 86400);
 
-        $orgId = DB::insert('organizations', ['name' => 'Sportskeeda', 'slug' => 'sportskeeda', 'created_by' => $owner['id'], 'created_at' => $at(40)]);
+        $orgId = DB::insert('organizations', ['name' => 'Acme Studio', 'slug' => 'acme-studio', 'created_by' => $owner['id'], 'created_at' => $at(40)]);
         DB::insert('memberships', ['org_id' => $orgId, 'user_id' => $owner['id'], 'preset' => 'admin', 'permissions' => json_encode(Perms::all()), 'all_projects' => 1, 'active' => 1, 'joined_at' => $at(40)]);
 
         $people = [];
@@ -111,23 +111,23 @@ if (isset($opts['seed'])) {
 
         // [title, status, assignees, priority, due offset, created days ago, completed days ago]
         $tasks = [
-            ['Cricrocket Redesign Part 2', 'In Progress', [$RD, $AS], null, 6, 2, null],
-            ['Q4 Product Launch - Social Media Assets', 'In Progress', [], 'high', 1, 9, null],
-            ['SoapCentral Ideation for Website Improvements', 'In Progress', [$AS], null, null, 6, null],
-            ['lenovo 360', 'In Progress', [$RD], null, null, 4, null],
-            ['Revamp cricket Card for sk', 'In Progress', [$RD], null, 10, 3, null],
-            ['Brand Refresh Intro Video', 'For Review', [], 'urgent', -1, 15, null],
-            ['New HTML Ad Units Formats', 'For Review', [$AS], 'high', 3, 5, null],
+            ['Homepage redesign, part 2', 'In Progress', [$RD, $AS], null, 6, 2, null],
+            ['Q4 launch: social media assets', 'In Progress', [], 'high', 1, 9, null],
+            ['Ideas to improve the pricing page', 'In Progress', [$AS], null, null, 6, null],
+            ['Product page 360° viewer', 'In Progress', [$RD], null, null, 4, null],
+            ['Refresh the score card component', 'In Progress', [$RD], null, 10, 3, null],
+            ['Brand refresh intro video', 'For Review', [], 'urgent', -1, 15, null],
+            ['New HTML ad unit formats', 'For Review', [$AS], 'high', 3, 5, null],
             ['Navigation testing', 'For Review', [], null, null, 7, null],
-            ['Homepage Promotional Banner', 'Revisions', [], 'normal', -2, 12, null],
-            ['Ad design guideline for Cricrocket app', 'Revisions', [$AY], null, 5, 8, null],
-            ['Ad design guideline for Techsk', 'Approved', [$AY], null, null, 30, 20],
-            ['hyrox.co.in event page', 'Approved', [$RD], null, null, 45, 33],
-            ['Cricrocket game section design', 'Approved', [$RD], 'high', null, 25, 14],
-            ['ind vs Brazil football page', 'Approved', [$RD], null, null, 60, 52],
-            ['Mani 360', 'Approved', [$AS], null, null, 20, 11],
-            ['CMC ad placement figma design', 'Approved', [$AY], 'normal', null, 18, 9],
-            ['Electronics feature tools images', 'Approved', [$RD, $AY], null, null, 70, 61],
+            ['Homepage promotional banner', 'Revisions', [], 'normal', -2, 12, null],
+            ['Ad design guidelines for the mobile app', 'Revisions', [$AY], null, 5, 8, null],
+            ['Ad design guidelines for the blog', 'Approved', [$AY], null, null, 30, 20],
+            ['Event landing page', 'Approved', [$RD], null, null, 45, 33],
+            ['Games section design', 'Approved', [$RD], 'high', null, 25, 14],
+            ['Match preview page', 'Approved', [$RD], null, null, 60, 52],
+            ['Team profile pages', 'Approved', [$AS], null, null, 20, 11],
+            ['Ad placement designs in Figma', 'Approved', [$AY], 'normal', null, 18, 9],
+            ['Feature images for the tools section', 'Approved', [$RD, $AY], null, null, 70, 61],
         ];
         $ids = [];
         foreach ($tasks as $i => [$title, $status, $assignees, $prio, $due, $created, $completed]) {
@@ -143,18 +143,18 @@ if (isset($opts['seed'])) {
             $ids[$title] = $id;
         }
 
-        // The task from the screenshot, with its description, subtasks and comment.
-        $main = $ids['Cricrocket Redesign Part 2'];
-        DB::update('tasks', ['description' => '<h3>Match-card &gt; Info Page - 40% Dropoff</h3><p>Before match, can we engage users.</p><h3>For You section on Android Check</h3><p>Redesign this.</p>'], 'id = ?', [$main]);
-        foreach (['Info Tab', 'Check for the For You Section'] as $j => $sub) {
+        // One task with a description, subtasks and a comment.
+        $main = $ids['Homepage redesign, part 2'];
+        DB::update('tasks', ['description' => '<h3>Info page: 40% drop-off</h3><p>Can we keep people engaged before they leave?</p><h3>“For you” section on Android</h3><p>Redesign this.</p>'], 'id = ?', [$main]);
+        foreach (['Info tab', 'Check the “For you” section'] as $j => $sub) {
             $sid = DB::insert('tasks', ['project_id' => $pid, 'parent_id' => $main, 'status_id' => $st['Requested'], 'title' => $sub, 'position' => $j, 'created_by' => $AS, 'created_at' => $at(2, 15), 'updated_at' => $at(2, 15)]);
             DB::insert('activity', ['task_id' => $sid, 'user_id' => $AS, 'action' => 'created', 'created_at' => $at(2, 15)]);
             DB::insert('activity', ['task_id' => $main, 'user_id' => $AS, 'action' => 'subtask_added', 'to_value' => $sub, 'created_at' => $at(2, 15)]);
         }
-        DB::insert('comments', ['task_id' => $main, 'user_id' => $AS, 'body' => 'Check with Ayushi on the data points, why the foryou section is added', 'created_at' => $at(2, 13)]);
+        DB::insert('comments', ['task_id' => $main, 'user_id' => $AS, 'body' => 'Check with Ayushi on the data: why was the “For you” section added?', 'created_at' => $at(2, 13)]);
         DB::insert('activity', ['task_id' => $main, 'user_id' => $AS, 'action' => 'status', 'from_value' => 'Requested', 'to_value' => 'In Progress', 'created_at' => $at(2, 13)]);
 
-        $out('Demo organization "Sportskeeda" added with 3 sample members (they can’t sign in until you reset their passwords).');
+        $out('Demo organization "Acme Studio" added with 3 sample members (they can’t sign in until you reset their passwords).');
     });
 }
 

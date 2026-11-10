@@ -22,7 +22,7 @@ return [
     'google' => [
         'client_id'       => '',                     // ….apps.googleusercontent.com
         'client_secret'   => '',
-        'allowed_domains' => [],                     // e.g. ['sportskeeda.com'] to only allow those emails; [] = anyone you've added
+        'allowed_domains' => [],                     // e.g. ['example.com'] to only allow those emails; [] = anyone you've added
     ],
     'database' => [
         'driver'   => 'mysql',

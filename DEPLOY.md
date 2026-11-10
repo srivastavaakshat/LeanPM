@@ -118,7 +118,7 @@ Paste the random string as `app_key`, and fill in the database name, user and pa
 Create the tables and your Owner account:
 
 ```bash
-php bin/install.php --owner-email=design@huntingcube.com --owner-name="Akshat Srivastava"
+php bin/install.php --owner-email=you@example.com --owner-name="Your Name"
 ```
 
 It prints your Owner password **once**. Save it in your password manager.
@@ -140,7 +140,7 @@ chmod -R 775 storage
 
 Sign in with the Owner account. You land on **Manage LeanPM**. Create your organization there, and enter **your own email** as the person who runs it if you want to work in it yourself (owners aren't added to organizations automatically).
 
-Sign in, then **+ New organization** → `Sportskeeda` → go to **Members** → **+ Add member** for each designer. Each new member gets a temporary password to send them; they choose their own at first sign-in.
+Sign in, then **+ New organization** → your team or client’s name → go to **Members** → **+ Add member** for each designer. Each new member gets a temporary password to send them; they choose their own at first sign-in.
 
 ## Step 9: Email (invites, password resets, @mentions)
 
@@ -185,7 +185,7 @@ This lets members sign in with their Google account. It only works for people yo
      (and `http://localhost:8090/auth/google/callback` if you also want it on your Mac).
    - Click **Create**, then copy the **Client ID** and **Client secret**.
 4. Over SSH, run `nano config/local.php` and add the `google` block from `config/local.example.php` with those two values. Save.
-   - To allow only company emails, set `'allowed_domains' => ['sportskeeda.com']`.
+   - To allow only company emails, set `'allowed_domains' => ['example.com']`.
 5. Open the sign-in page. A **Sign in with Google** button now appears.
    - Existing members can also connect Google under **Your account**. This is needed if their Google email differs from their LeanPM email.
 
