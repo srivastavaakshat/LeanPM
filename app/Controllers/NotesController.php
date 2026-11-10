@@ -17,6 +17,24 @@ use App\Services\Tasks;
  */
 final class NotesController
 {
+    /** Sections of the task quick view a doc can switch off (Stage and Project always show). */
+    public const PEEK_SECTIONS = [
+        'assignees'   => 'Assignees',
+        'dates'       => 'Start and due dates',
+        'priority'    => 'Priority',
+        'fields'      => 'Custom fields (e.g. Figma file)',
+        'description' => 'Description',
+        'subtasks'    => 'Subtasks',
+        'files'       => 'Files',
+        'updates'     => 'Updates and comments',
+    ];
+
+    public static function sections(?string $json): array
+    {
+        $saved = json_decode((string) $json, true);
+        return is_array($saved) ? array_values(array_intersect(array_keys(self::PEEK_SECTIONS), $saved)) : array_keys(self::PEEK_SECTIONS);
+    }
+
     // ---------- pages ----------
 
     public function index(string $org): string
@@ -67,10 +85,12 @@ final class NotesController
 
         $members = Access::members(includeInactive: true);
         $boot = [
-            'doc'      => ['id' => (int) $d['id'], 'title' => $d['title'], 'visibility' => $d['visibility'], 'default_project' => $d['default_project_id'] ? (int) $d['default_project_id'] : Access::inboxId(), 'owner' => (int) $d['owner_id']],
+            'doc'      => ['id' => (int) $d['id'], 'title' => $d['title'], 'visibility' => $d['visibility'], 'default_project' => $d['default_project_id'] ? (int) $d['default_project_id'] : Access::inboxId(), 'owner' => (int) $d['owner_id'], 'sections' => self::sections($d['peek_sections'])],
             'entries'  => $entries,
             'projects' => $this->projectChoices(),
-            'members'  => array_map(fn ($m) => ['id' => (int) $m['id'], 'name' => $m['name'], 'color' => $m['color'], 'initials' => initials($m['name'])], $members),
+            'members'  => array_map(fn ($m) => ['id' => (int) $m['id'], 'name' => $m['name'], 'color' => $m['color'], 'initials' => initials($m['name']), 'active' => (bool) $m['active']], $members),
+            'priorities' => Tasks::PRIORITIES,
+            'maxUpload' => (int) config('upload_max_mb', 25),
             'me'       => $uid,
             'isOwner'  => (int) $d['owner_id'] === $uid,
             'can'      => ['create' => Access::can('create_tasks')],
@@ -87,12 +107,17 @@ final class NotesController
         $o = Access::org($org);
         $d = $this->doc((int) $doc, ownerOnly: true);
         $title = mb_substr(trim((string) input('title', '')), 0, 120);
-        DB::update('notes_docs', [
+        $set = [
             'title' => $title !== '' ? $title : $d['title'],
             'visibility' => input('visibility') === 'org' ? 'org' : 'private',
             'default_project_id' => $this->validProject(input('default_project')),
             'updated_at' => now(),
-        ], 'id = ?', [$d['id']]);
+        ];
+        // Only the full Settings dialog sends the quick-view checklist (the header's project picker doesn't).
+        if (input('sections_form') === '1') {
+            $set['peek_sections'] = json_encode(array_values(array_intersect(array_keys(self::PEEK_SECTIONS), (array) ($_POST['peek'] ?? []))));
+        }
+        DB::update('notes_docs', $set, 'id = ?', [$d['id']]);
         flash('success', 'Doc settings saved.');
         redirect("/o/{$o['slug']}/notes/{$d['id']}");
     }

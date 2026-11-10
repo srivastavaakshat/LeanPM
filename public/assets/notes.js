@@ -371,6 +371,7 @@
   // A chip opens the quick view; changes there update every chip of that task.
   function openChip(id) {
     peek.open(id, {
+      sections: DOC.sections,
       onChange: t => {
         chips[t.id] = { ...chips[t.id], title: t.title, due_date: t.due_date, assignees: t.assignees,
           status: t.statuses.find(s => s.id === t.status_id), project: t.project, url: t.url };

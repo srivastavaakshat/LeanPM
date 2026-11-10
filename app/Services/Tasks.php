@@ -190,6 +190,8 @@ final class Tasks
         $data['project'] = ['id' => (int) $proj['id'], 'name' => $proj['name'], 'inbox' => (bool) $proj['is_inbox']];
         $data['statuses'] = array_map(fn ($s) => $s + ['id' => (int) $s['id']], self::statuses((int) $task['project_id']));
         $data['url'] = url('/o/' . Access::$org['slug'] . '/p/' . $task['project_id'], ['task' => $id]);
+        $data['field_defs'] = Fields::forProject((int) $task['project_id']);
+        $data['can'] += ['comment' => Access::can('comment'), 'upload' => Access::can('upload'), 'create' => Access::can('create_tasks')];
         $data['parent'] = $task['parent_id'] ? DB::one('SELECT id, title FROM tasks WHERE id = ? AND deleted_at IS NULL', [$task['parent_id']]) : null;
         $data['subtask_list'] = self::serializeMany(DB::all('SELECT * FROM tasks WHERE parent_id = ? AND deleted_at IS NULL ORDER BY position, id', [$id]));
 

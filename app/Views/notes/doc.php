@@ -54,6 +54,15 @@ foreach ($projects as $p) { if ($p['id'] === $boot['doc']['default_project']) { 
       <label class="check"><input type="radio" name="visibility" value="private" <?= $doc['visibility'] !== 'org' ? 'checked' : '' ?>> Only me</label>
       <label class="check"><input type="radio" name="visibility" value="org" <?= $doc['visibility'] === 'org' ? 'checked' : '' ?>> Everyone in <?= e($org['name']) ?> (they can read and add entries)</label>
     </fieldset>
+    <fieldset class="field"><legend>Task quick view shows</legend>
+      <input type="hidden" name="sections_form" value="1">
+      <p class="hint" style="margin-bottom:6px">What you see when you click a task in these notes. Stage and project always show.</p>
+      <div class="check-grid">
+        <?php foreach (\App\Controllers\NotesController::PEEK_SECTIONS as $k => $label): ?>
+          <label class="check"><input type="checkbox" name="peek[]" value="<?= e($k) ?>" <?= in_array($k, $boot['doc']['sections'], true) ? 'checked' : '' ?>> <?= e($label) ?></label>
+        <?php endforeach; ?>
+      </div>
+    </fieldset>
     <div class="actions"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">Save</button></div>
   </form>
   <form method="post" action="<?= e(url($base . '/' . $doc['id'] . '/delete')) ?>" class="row-between danger-zone dialog-danger" data-confirm="Delete “<?= e($doc['title']) ?>” and all its entries? Tasks created from it stay on their boards. This can’t be undone.">

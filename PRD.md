@@ -245,7 +245,13 @@ A permission change takes effect on the member's next page load. The member's pr
   - The line then shows a **live task chip** with a checkbox (ticked when done), title, current stage, project, people, and due date.
   - The task's history records which meeting doc it came from.
 - **Default project:** each doc has a "New tasks go to" project, or the **Inbox** if none is set. It can be overridden on each task.
-- **Quick view:** clicking a task chip opens a side panel. It shows and changes the stage, due date, and project, lists the latest updates, and can add an update, without leaving the notes. "Open task" opens the full task on its board.
+- **Task quick view:** clicking a task chip opens a full task editor in a side panel, without leaving the notes. "Open task" opens the task on its board.
+  - **Details:** stage, assignees, start and due dates, priority, project, the project's custom fields (e.g. Figma file), and created/completed.
+  - **Description:** rich text that saves automatically.
+  - **Subtasks:** add, open, and detach.
+  - **Files:** drop in or upload, with image previews.
+  - **Updates:** comments, with attachments.
+  - **Doc Settings → "Task quick view shows":** choose which sections appear (Assignees, Dates, Priority, Custom fields, Description, Subtasks, Files, Updates). All are on by default; Stage and Project always show.
 - **Side panel:** lists *Tasks from this doc* (open first, done collapsed) with live stages, and *Meetings*, a list of earlier entries to jump to.
 - **Permission:** *Use meeting notes* is on for Admin, Lead, and Designer, and off for Viewer. Creating tasks still needs *Create tasks*.
 

@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS notes_docs (
     title VARCHAR(120) NOT NULL,
     visibility VARCHAR(10) NOT NULL DEFAULT 'private',
     default_project_id INT UNSIGNED NULL,
+    peek_sections TEXT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     KEY notes_docs_org (org_id),
