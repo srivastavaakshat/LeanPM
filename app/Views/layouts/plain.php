@@ -10,7 +10,7 @@
 </head>
 <body class="plain">
 <main class="plain-card">
-  <a class="brand" href="<?= e(url('/')) ?>"><span class="brand-mark">L</span> LeanPM</a>
+  <a class="brand" href="<?= e(url('/')) ?>"><img src="<?= e(asset('logo.svg')) ?>" alt="LeanPM" width="120" height="28"></a>
   <?php foreach (\App\Core\Session::flashes() as $f): ?>
     <div class="flash flash-<?= e($f['type']) ?>"><?= e($f['message']) ?></div>
   <?php endforeach; ?>

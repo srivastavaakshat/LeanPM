@@ -10,9 +10,14 @@ use App\Services\Activity;
 
 final class OrgController
 {
-    /** Open the last organization used, else the first one. */
-    public function home(): never
+    /** Visitors see the landing page; signed-in people open the last organization used, else the first one. */
+    public function home(): string
     {
+        if (!Auth::user()) {
+            header_remove('X-Robots-Tag'); // the one page search engines may list
+            return view('landing', ['repo' => (string) config('repo_url', 'https://github.com/srivastavaakshat/LeanPM')], null);
+        }
+        Auth::enforce();
         $orgs = Access::myOrgs();
         if (!$orgs) {
             if (Auth::isOwner()) {

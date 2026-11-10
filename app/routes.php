@@ -30,7 +30,8 @@ $router->get('/account', [AccountController::class, 'show']);
 $router->post('/account', [AccountController::class, 'update']);
 
 // Organizations
-$router->get('/', [OrgController::class, 'home']);
+// The public landing page for visitors; signed-in people go straight to their workspace.
+$router->get('/', [OrgController::class, 'home'], ['guest']);
 $router->get('/admin', [App\Controllers\AdminController::class, 'index']);
 $router->post('/admin/orgs/{id}/rename', [App\Controllers\AdminController::class, 'rename']);
 $router->post('/admin/orgs/{id}/admins', [App\Controllers\AdminController::class, 'storeAdmin']);

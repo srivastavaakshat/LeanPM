@@ -108,7 +108,7 @@ body.plain { display: grid; place-items: center; min-height: 100vh; padding: 16p
 .plain-card h1 { margin-bottom: 18px; font-size: 20px; }
 .plain-card .hint { margin-top: 16px; }
 .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); margin-bottom: 22px; text-decoration: none !important; }
-.brand-mark { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: #fff; font-size: 14px; }
+.brand img { display: block; height: 28px; width: auto; }
 .err-code { font-size: 44px; color: var(--faint); }
 
 /* Google sign-in */

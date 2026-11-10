@@ -3,7 +3,7 @@
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e7e7ec;border-radius:12px">
 <tr><td style="padding:26px 28px">
-  <p style="margin:0 0 18px;font-weight:700;font-size:15px"><span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;background:#5b5bd6;color:#fff;font-size:12px;margin-right:6px">L</span>LeanPM</p>
+  <p style="margin:0 0 18px;font-weight:700;font-size:15px"><span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;background:#14213D;color:#B7F34A;font-size:12px;margin-right:6px">L</span>LeanPM</p>
   <p style="margin:0 0 12px">Hi <?= e($name) ?>,</p>
   <?php foreach ($lines as $line): ?><p style="margin:0 0 12px"><?= $line ?></p><?php endforeach; ?>
   <p style="margin:20px 0 6px"><a href="<?= e($url) ?>" style="display:inline-block;padding:10px 18px;background:#5b5bd6;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600"><?= e($button) ?></a></p>

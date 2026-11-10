@@ -337,3 +337,4 @@ email when you're assigned a task · project-level files and links (not attached
 - **15 Oct 2026:** Email notifications (assignment and @mentions) ship together in a later version. They need a Hostinger mailbox and a cron job.
 - **15 Oct 2026:** @mentions with email moved into v1 (comments and descriptions). Assignment emails stay in a later version.
 - **10 Nov 2026:** Owners are LeanPM-wide admins, not org members. Creating an organization no longer adds the owner; they can name its admin instead. More owners can be added. New tasks are assigned to their creator by default.
+- **10 Nov 2026:** A public landing page at `/` for visitors (why it exists, the main features, a link to build your own from GitHub). Signed-in people still go straight to their workspace. Logo and icon from Akshat's brand files (navy #14213D, lime #B7F34A).
