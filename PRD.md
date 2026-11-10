@@ -298,7 +298,7 @@ This follows the same setup as Rare Flavours and Wear Human.
   - `public/` is the front controller.
   - `database/schema.sql` and `database/migrations` hold the schema.
   - `bin/install.php` and `bin/migrate.php` set up and upgrade the database.
-- **Source control:** a private GitHub repo, `srivastavaakshat/leanpm`, managed with GitHub Desktop.
+- **Source control:** a private GitHub repo, `srivastavaakshat/LeanPM`, managed with GitHub Desktop.
   - Hostinger pulls it through hPanel → Git using a read-only deploy key.
   - A push webhook deploys automatically.
   - A root `.htaccess` sends every request into `/public` and blocks `app/`, `config/`, `storage/`, and `bin/`.

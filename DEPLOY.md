@@ -3,7 +3,7 @@
 This guide takes LeanPM from GitHub to **https://leanpm.houseofjugaad.in** on the Hostinger **Business** plan.
 
 **Time:** about 40 minutes.
-**Tools:** hPanel (hpanel.hostinger.com), GitHub (github.com/srivastavaakshat/leanpm) and a password manager.
+**Tools:** hPanel (hpanel.hostinger.com), GitHub (github.com/srivastavaakshat/LeanPM) and a password manager.
 
 ```
 GitHub repo (code only)  ──deploy──▶  leanpm subdomain folder  ◀──  config/local.php (secrets, created once on the server)
@@ -68,7 +68,7 @@ hPanel → **Advanced → SSH Access** → **Enable**, and copy the SSH command 
 ### 6a. Read-only deploy key
 
 1. hPanel → **Advanced → Git** → copy the **SSH key** at the top.
-2. GitHub → **srivastavaakshat/leanpm → Settings → Deploy keys → Add deploy key**. Title `Hostinger`, paste the key, leave **Allow write access** unticked.
+2. GitHub → **srivastavaakshat/LeanPM → Settings → Deploy keys → Add deploy key**. Title `Hostinger`, paste the key, leave **Allow write access** unticked.
 
 ### 6b. Empty the leanpm folder
 
@@ -78,7 +78,7 @@ File Manager → open the leanpm folder → delete anything inside (a new subdom
 
 hPanel → **Advanced → Git → Create a new repository**
 
-- **Repository:** `git@github.com:srivastavaakshat/leanpm.git`
+- **Repository:** `git@github.com:srivastavaakshat/LeanPM.git`
 - **Branch:** `main`
 - **Directory:** `leanpm` (the subdomain's folder inside `public_html`)
 
