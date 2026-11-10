@@ -2,7 +2,7 @@
 
 A small, self-hosted project manager for the design team: Kanban board + list view, tasks with assignees, dates, priority, subtasks, comments and files, per-member permissions, multiple organizations, and CSV reports. See [PRD.md](PRD.md).
 
-Plain PHP 8.1+ and MariaDB/MySQL (SQLite locally), server-rendered pages plus a small JSON API for the board, vanilla JS, no build step, no Composer. Deployed to Hostinger from GitHub, the same way as Rare Flavours and Wear Human. Live at **https://pm.houseofjugaad.com** (see [DEPLOY.md](DEPLOY.md)).
+Plain PHP 8.1+ and MariaDB/MySQL (SQLite locally), server-rendered pages plus a small JSON API for the board, vanilla JS, no build step, no Composer. Deployed to Hostinger from GitHub, the same way as Rare Flavours and Wear Human. Live at **https://leanpm.houseofjugaad.in** (see [DEPLOY.md](DEPLOY.md)).
 
 ## Run locally
 

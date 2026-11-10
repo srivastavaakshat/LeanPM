@@ -290,7 +290,7 @@ login_attempts   email, ip_hash, attempted_at            -- rate limiting
 
 This follows the same setup as Rare Flavours and Wear Human.
 
-- **URL:** `https://pm.houseofjugaad.com`. It's a subdomain on the existing Hostinger **Business** shared plan, deployed into that subdomain's folder.
+- **URL:** `https://leanpm.houseofjugaad.in`. It's a subdomain on the existing Hostinger **Business** shared plan, deployed into that subdomain's folder.
 - **Stack:** plain **PHP 8.3** and **MariaDB**, server-rendered, with vanilla JS. There's no Composer and no build step. Locally it runs on SQLite with `php -S`.
 - **Code layout:** the same as Rare Flavours:
   - `app/Core` holds Router, Database (PDO with prepared statements), Auth, Csrf, Session, Validator, and View.

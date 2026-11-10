@@ -1,12 +1,12 @@
 # Going live on Hostinger: step by step
 
-This guide takes LeanPM from GitHub to **https://pm.houseofjugaad.com** on the Hostinger **Business** plan.
+This guide takes LeanPM from GitHub to **https://leanpm.houseofjugaad.in** on the Hostinger **Business** plan.
 
 **Time:** about 40 minutes.
 **Tools:** hPanel (hpanel.hostinger.com), GitHub (github.com/srivastavaakshat/leanpm) and a password manager.
 
 ```
-GitHub repo (code only)  ──deploy──▶  pm subdomain folder  ◀──  config/local.php (secrets, created once on the server)
+GitHub repo (code only)  ──deploy──▶  leanpm subdomain folder  ◀──  config/local.php (secrets, created once on the server)
                                               │
                                               ├── MariaDB database (organizations, tasks, comments …)
                                               └── storage/uploads (task files)
@@ -20,7 +20,7 @@ Keep a note open for these values:
 
 | Value | Example | From |
 |---|---|---|
-| Subdomain folder | `public_html/pm` | Step 1 |
+| Subdomain folder | `public_html/leanpm` | Step 1 |
 | DB name | `u123456789_leanpm` | Step 3 |
 | DB user | `u123456789_lpmuser` | Step 3 |
 | DB password | long random string | Step 3 (password manager) |
@@ -30,10 +30,11 @@ Keep a note open for these values:
 
 ## Step 1: Create the subdomain
 
-hPanel → **Websites** → **Manage** on `houseofjugaad.com` → **Domains → Subdomains**
+hPanel → **Websites** → **Manage** on `houseofjugaad.in` → **Domains → Subdomains**
 
-1. Type `pm` and create it.
-2. Note its folder, usually `public_html/pm`. Use that folder wherever this guide says “the pm folder”.
+1. Type `leanpm` and create it.
+   - `houseofjugaad.in` has to be a website on your Hostinger account for this. If it's registered somewhere else, either add it as a website in hPanel, or, at your domain registrar, add an **A record** for `leanpm` pointing to your Hostinger server's IP (hPanel shows it under Websites → Dashboard).
+2. Note its folder, usually `public_html/leanpm`. Use that folder wherever this guide says “the leanpm folder”.
 
 ## Step 2: PHP settings
 
@@ -56,7 +57,7 @@ hPanel → **Databases → Management**
 
 ## Step 4: SSL
 
-hPanel → **Security → SSL** → install the free SSL for `pm.houseofjugaad.com`. Wait until it says **Active** (5–15 minutes). The app forces https by itself.
+hPanel → **Security → SSL** → install the free SSL for `leanpm.houseofjugaad.in`. Wait until it says **Active** (5–15 minutes). The app forces https by itself.
 
 ## Step 5: Turn on SSH
 
@@ -69,9 +70,9 @@ hPanel → **Advanced → SSH Access** → **Enable**, and copy the SSH command 
 1. hPanel → **Advanced → Git** → copy the **SSH key** at the top.
 2. GitHub → **srivastavaakshat/leanpm → Settings → Deploy keys → Add deploy key**. Title `Hostinger`, paste the key, leave **Allow write access** unticked.
 
-### 6b. Empty the pm folder
+### 6b. Empty the leanpm folder
 
-File Manager → open the pm folder → delete anything inside (a new subdomain usually only has `default.php`). Hostinger's Git deploy only works into an empty folder.
+File Manager → open the leanpm folder → delete anything inside (a new subdomain usually only has `default.php`). Hostinger's Git deploy only works into an empty folder.
 
 ### 6c. Add the repository
 
@@ -79,9 +80,9 @@ hPanel → **Advanced → Git → Create a new repository**
 
 - **Repository:** `git@github.com:srivastavaakshat/leanpm.git`
 - **Branch:** `main`
-- **Directory:** `pm` (the subdomain's folder inside `public_html`)
+- **Directory:** `leanpm` (the subdomain's folder inside `public_html`)
 
-Click **Create**, then **Deploy**. The pm folder should now contain `app/`, `bin/`, `config/`, `database/`, `public/`, `storage/` and `.htaccess`.
+Click **Create**, then **Deploy**. The leanpm folder should now contain `app/`, `bin/`, `config/`, `database/`, `public/`, `storage/` and `.htaccess`.
 
 ### 6d. Auto-deploy on every push (recommended)
 
@@ -93,7 +94,7 @@ Click **Create**, then **Deploy**. The pm folder should now contain `app/`, `bin
 On your Mac, open Terminal and paste the SSH command from your note, then:
 
 ```bash
-cd domains/houseofjugaad.com/public_html/pm
+cd domains/houseofjugaad.in/public_html/leanpm
 ```
 
 (Run `ls` if the path differs; you want the folder that contains `bin/`.)
@@ -132,10 +133,10 @@ chmod -R 775 storage
 
 | Open | Expect |
 |---|---|
-| `https://pm.houseofjugaad.com` | Sign-in page |
-| `http://pm.houseofjugaad.com` | Redirects to https |
-| `https://pm.houseofjugaad.com/config/local.php` | Forbidden |
-| `https://pm.houseofjugaad.com/storage/` | Forbidden |
+| `https://leanpm.houseofjugaad.in` | Sign-in page |
+| `http://leanpm.houseofjugaad.in` | Redirects to https |
+| `https://leanpm.houseofjugaad.in/config/local.php` | Forbidden |
+| `https://leanpm.houseofjugaad.in/storage/` | Forbidden |
 
 Sign in, then **+ New organization** → `Sportskeeda` → go to **Members** → **+ Add member** for each designer. Each new member gets a temporary password to send them; they choose their own at first sign-in.
 
@@ -143,13 +144,13 @@ Sign in, then **+ New organization** → `Sportskeeda` → go to **Members** →
 
 When someone types `@Name` in a comment or a description, that person gets an email. Each person can turn this off under **Your account**.
 
-1. **Create a mailbox.** hPanel → **Emails** → on `houseofjugaad.com` create `pm@houseofjugaad.com` and set a password.
+1. **Create a mailbox.** hPanel → **Emails** → on `houseofjugaad.in` create `leanpm@houseofjugaad.in` and set a password.
 2. **Add it to the server config.** Over SSH, run `nano config/local.php` and add the `mail` block from `config/local.example.php` with that mailbox's password. Save.
-3. **Deliverability.** hPanel → Emails → `houseofjugaad.com`: make sure **SPF**, **DKIM** and **DMARC** are set up (Hostinger offers one-click fixes). Without them, Gmail may put the emails in spam.
+3. **Deliverability.** hPanel → Emails → `houseofjugaad.in`: make sure **SPF**, **DKIM** and **DMARC** are set up (Hostinger offers one-click fixes). Without them, Gmail may put the emails in spam.
 4. **Cron job (fallback).** The app sends right away, but a cron job retries anything that failed. hPanel → **Advanced → Cron Jobs** → Custom, every 5 minutes (`*/5 * * * *`):
 
 ```bash
-/usr/bin/php /home/YOUR-USER/domains/houseofjugaad.com/public_html/pm/bin/send-emails.php
+/usr/bin/php /home/YOUR-USER/domains/houseofjugaad.in/public_html/leanpm/bin/send-emails.php
 ```
 
 5. **Check it.** Over SSH, run this to see whether mail is configured and whether anything is stuck:
@@ -173,7 +174,7 @@ This lets members sign in with their Google account. It only works for people yo
 3. **APIs & Services → Credentials → Create credentials → OAuth client ID:**
    - Application type: **Web application**, name `LeanPM`.
    - **Authorized redirect URIs:** add
-     `https://pm.houseofjugaad.com/auth/google/callback`
+     `https://leanpm.houseofjugaad.in/auth/google/callback`
      (and `http://localhost:8090/auth/google/callback` if you also want it on your Mac).
    - Click **Create**, then copy the **Client ID** and **Client secret**.
 4. Over SSH, run `nano config/local.php` and add the `google` block from `config/local.example.php` with those two values. Save.
@@ -202,5 +203,5 @@ This lets members sign in with their Google account. It only works for people yo
 | 500 right after deploy | `config/local.php` missing or has a typo. |
 | “Access denied for user” | DB name/user/password don't match Step 3 (use the full `u…_` names). |
 | Uploads fail or say “too large” | Raise `upload_max_filesize` / `post_max_size` (Step 2); `chmod -R 775 storage`. |
-| Git deploy “directory not empty” | Empty the pm folder and deploy again. |
+| Git deploy “directory not empty” | Empty the leanpm folder and deploy again. |
 | Forgot the Owner password | Over SSH: `php -r 'require "app/bootstrap.php"; App\Core\Database::query("UPDATE users SET password_hash=? WHERE is_owner=1", [password_hash($argv[1], PASSWORD_DEFAULT)]);' 'NEW-PASSWORD'` |

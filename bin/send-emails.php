@@ -3,7 +3,7 @@
  * Send queued email (@mention notifications). The app already sends right after each request;
  * this cron job picks up anything that failed or was left over.
  *   hPanel → Advanced → Cron Jobs, every 5 minutes:
- *   /usr/bin/php /home/YOUR-USER/domains/houseofjugaad.com/public_html/pm/bin/send-emails.php
+ *   /usr/bin/php /home/YOUR-USER/domains/houseofjugaad.in/public_html/leanpm/bin/send-emails.php
  *   php bin/send-emails.php --status    shows whether mail is configured and what's waiting
  */
 declare(strict_types=1);

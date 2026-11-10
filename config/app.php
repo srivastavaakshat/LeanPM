@@ -8,7 +8,7 @@ $config = [
     'name'          => 'LeanPM',
     'env'           => 'local',            // local | production
     'debug'         => true,
-    'url'           => '',                 // e.g. https://pm.houseofjugaad.com (no trailing slash). Empty = auto-detect.
+    'url'           => '',                 // e.g. https://leanpm.houseofjugaad.in (no trailing slash). Empty = auto-detect.
     'base_path'     => null,               // URL prefix. '' when the root .htaccess forwards into /public. null = auto-detect.
     'timezone'      => 'Asia/Kolkata',
     'clean_urls'    => true,               // false = index.php?r=/path (hosts without mod_rewrite)
