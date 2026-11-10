@@ -16,6 +16,17 @@ final class Access
     public static ?array $org = null;
     public static ?array $member = null;   // membership row + 'perms' (array) + 'project_ids' (null = all)
 
+    /**
+     * LeanPM owners manage the organizations themselves (create, rename, delete, add an admin)
+     * and the list of owners. That's all: inside an org they need a membership like anyone else.
+     */
+    public static function owner(): void
+    {
+        if (!Auth::isOwner()) {
+            abort(403, 'Only a LeanPM owner can do this.');
+        }
+    }
+
     /** Load an organization by slug for the current user, or 404. */
     public static function org(string $slug): array
     {
@@ -39,20 +50,13 @@ final class Access
     {
         $uid = Auth::id();
         $m = DB::one('SELECT * FROM memberships WHERE org_id = ? AND user_id = ?', [$org['id'], $uid]);
-        if (Auth::isOwner()) {
-            // The Owner has every permission everywhere and can't be locked out.
-            $m = ($m ?: ['id' => 0, 'org_id' => $org['id'], 'user_id' => $uid, 'preset' => 'admin']);
-            $m['perms'] = Perms::all();
-            $m['project_ids'] = null;
-            $m['active'] = 1;
-        } else {
-            if (!$m || !(int) $m['active']) {
-                abort(404);
-            }
-            $m['perms'] = Perms::decode($m['permissions'], $m['preset']);
-            $m['project_ids'] = (int) $m['all_projects'] ? null
-                : array_map('intval', array_column(DB::all('SELECT project_id FROM membership_projects WHERE membership_id = ?', [$m['id']]), 'project_id'));
+        // Being a LeanPM owner gives no access inside an organization; only a membership does.
+        if (!$m || !(int) $m['active']) {
+            abort(404);
         }
+        $m['perms'] = Perms::decode($m['permissions'], $m['preset']);
+        $m['project_ids'] = (int) $m['all_projects'] ? null
+            : array_map('intval', array_column(DB::all('SELECT project_id FROM membership_projects WHERE membership_id = ?', [$m['id']]), 'project_id'));
         self::$org = $org;
         self::$member = $m;
         $_SESSION['last_org'] = $org['slug'];
@@ -175,9 +179,6 @@ final class Access
     /** Organizations the current user can open. */
     public static function myOrgs(): array
     {
-        if (Auth::isOwner()) {
-            return DB::all('SELECT * FROM organizations ORDER BY name');
-        }
         return DB::all('SELECT o.* FROM organizations o JOIN memberships m ON m.org_id = o.id WHERE m.user_id = ? AND m.active = 1 ORDER BY o.name', [Auth::id()]);
     }
 

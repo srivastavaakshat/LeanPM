@@ -2,12 +2,23 @@
   <header class="page-head"><h1>Your account</h1></header>
   <form method="post" action="<?= e(url('/account')) ?>" class="card stack">
     <?= csrf_field() ?>
-    <div class="row-center"><?= avatar($user, 'lg') ?><div><strong><?= e($user['name']) ?></strong><div class="muted"><?= e($user['email']) ?></div></div></div>
-    <label class="field"><span>Name</span><input name="name" value="<?= e($user['name']) ?>" required maxlength="120"></label>
+    <div class="row-center"><?= avatar($user, 'lg') ?><div><strong><?= e($user['name']) ?></strong><div class="muted"><?= e($user['email']) ?></div><?= $user['is_owner'] ? '<span class="tag">LeanPM owner</span>' : '' ?></div></div>
+    <label class="field"><span>Name</span><input name="name" value="<?= e(old('name', $user['name'])) ?>" required maxlength="120"></label>
     <?= error_for('name') ?>
+    <label class="field"><span>Email (you sign in with this)</span><input name="email" type="email" value="<?= e(old('email', $user['email'])) ?>" required maxlength="190" data-original="<?= e($user['email']) ?>"></label>
+    <?= error_for('email') ?>
+    <label class="field current-pw" <?= error_for('current') === '' ? 'hidden' : '' ?>><span>Current password (needed to change your email)</span><input name="current" type="password" autocomplete="current-password"></label>
+    <?= error_for('current') ?>
     <label class="check"><input type="hidden" name="notify_mentions" value="0"><input type="checkbox" name="notify_mentions" value="1" <?= $notify ? 'checked' : '' ?>> Email me when someone @mentions me</label>
     <div class="actions"><a class="btn" href="<?= e(url('/account/password')) ?>">Change password</a><button class="btn btn-primary">Save</button></div>
   </form>
+  <script>
+  (() => {
+    const i = document.querySelector('input[data-original]'), pw = document.querySelector('.current-pw');
+    const sync = () => { if (i.value.trim().toLowerCase() !== i.dataset.original) pw.hidden = false; };
+    i.addEventListener('input', sync); sync();
+  })();
+  </script>
   <?php if (\App\Services\GoogleAuth::enabled()): ?>
   <div class="card row-between">
     <div><h2 class="card-title" style="margin:0 0 2px">Google sign-in</h2>

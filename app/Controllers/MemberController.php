@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Database as DB;
 use App\Services\AccountEmails;
 use App\Services\Access;
+use App\Services\Members;
 use App\Services\Perms;
 
 /** Add members and choose exactly what each one can do (PRD §5.1a). */
@@ -16,13 +17,13 @@ final class MemberController
     {
         $o = Access::org($org);
         $rows = DB::all(
-            'SELECT m.*, u.name, u.email, u.color, u.is_owner, u.last_login_at, u.must_change_password
+            'SELECT m.*, u.name, u.email, u.color, u.last_login_at, u.must_change_password
              FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.org_id = ? ORDER BY m.active DESC, u.name',
             [$o['id']]
         );
         foreach ($rows as &$r) {
             $r['perms'] = Perms::decode($r['permissions'], $r['preset']);
-            $r['label'] = $r['is_owner'] ? 'Owner' : Perms::label($r['preset'], $r['perms']);
+            $r['label'] = Perms::label($r['preset'], $r['perms']);
         }
         return view('members/index', ['title' => 'Members', 'rows' => $rows, 'canManage' => Access::can('manage_members')]);
     }
@@ -66,31 +67,11 @@ final class MemberController
         }
         [$preset, $perms, $all, $projectIds] = $this->submitted();
 
-        $isNew = !$user;
-        DB::transaction(function () use ($o, $name, $email, &$user, $preset, $perms, $all, $projectIds) {
-            if (!$user) {
-                // Nobody knows this password; they choose their own from the invite link.
-                $id = DB::insert('users', [
-                    'name' => $name, 'email' => $email, 'password_hash' => password_hash(random_password(32), PASSWORD_DEFAULT),
-                    'color' => random_color(), 'is_owner' => 0, 'must_change_password' => 1, 'created_at' => now(),
-                ]);
-                $user = ['id' => $id, 'name' => $name, 'email' => $email];
-            }
-            $mid = DB::insert('memberships', [
-                'org_id' => $o['id'], 'user_id' => $user['id'], 'preset' => $preset, 'permissions' => json_encode($perms),
-                'all_projects' => $all ? 1 : 0, 'active' => 1, 'joined_at' => now(),
-            ]);
-            $this->saveProjects($mid, $all, $projectIds);
-        });
-
-        $inviter = (string) Auth::user()['name'];
-        if ($isNew) {
-            $link = AccountEmails::link((int) $user['id'], 'invite');
-            AccountEmails::invite($user, $o, $inviter, $link);
+        $added = Members::add($o, $name, $email, $preset, $perms, $all, $projectIds, (string) Auth::user()['name']);
+        if ($added['new']) {
             // The link is also shown here, in case the email doesn't arrive.
-            $_SESSION['new_credentials'] = ['name' => $name, 'email' => $email, 'link' => $link, 'kind' => 'invite'];
+            $_SESSION['new_credentials'] = ['name' => $name, 'email' => $email, 'link' => $added['link'], 'kind' => 'invite'];
         } else {
-            AccountEmails::addedToOrg($user, $o, $inviter);
             flash('success', "{$user['name']} already had an account, so they sign in with their usual password. We emailed them that you added them.");
         }
         redirect("/o/{$o['slug']}/members");
@@ -160,19 +141,19 @@ final class MemberController
             AccountEmails::reset($user, $link, $inviter);
             $kind = 'reset';
         }
-        $_SESSION['new_credentials'] = ['name' => $m['name'], 'email' => $m['email'], 'link' => $link, 'kind' => $kind];
+        $_SESSION['new_credentials'] = [
+            'name' => $m['name'], 'email' => $m['email'], 'kind' => $kind,
+            'link' => Members::linkMayBeShown($user, (int) $o['id']) ? $link : null,
+        ];
         redirect("/o/{$o['slug']}/members");
     }
 
-    /** A membership of this org. Changes are refused for the Owner and for yourself. */
+    /** A membership of this org. Changes to your own are refused. */
     private function load(array $o, int $id, bool $forChange = false): array
     {
         $m = DB::one('SELECT m.*, u.name, u.email, u.color, u.is_owner FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.id = ? AND m.org_id = ?', [$id, $o['id']]);
         if (!$m) {
             abort(404);
-        }
-        if ($m['is_owner']) {
-            abort(403, 'The Owner always has every permission.');
         }
         if ($forChange && (int) $m['user_id'] === Auth::id()) {
             abort(403, 'You can’t change your own permissions. Ask another admin.');

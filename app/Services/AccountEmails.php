@@ -56,6 +56,16 @@ final class AccountEmails
         ], 'Open LeanPM', absolute_url('/o/' . $org['slug']));
     }
 
+    /** Someone was made a LeanPM owner. $link is set for a new account (they choose a password). */
+    public static function madeOwner(array $user, string $by, ?string $link): void
+    {
+        self::send($user, "{$by} made you a LeanPM owner", [
+            "{$by} made you an <strong>owner</strong> of LeanPM.",
+            'Owners create, rename and delete organizations, choose who runs each one, and manage the list of owners. To work inside an organization you still need to be added to it as a member.',
+            $link ? 'Choose a password to get started. The link works for 7 days.' : 'Sign in with your usual email and password, then open Manage LeanPM from the organization menu.',
+        ], $link ? 'Set your password' : 'Open LeanPM', $link ?? absolute_url('/admin'));
+    }
+
     public static function reset(array $user, string $link, ?string $byAdmin = null): void
     {
         $lines = $byAdmin

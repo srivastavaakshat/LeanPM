@@ -30,7 +30,7 @@ storage/uploads      task files, outside the web root (git-ignored)
 
 ## How permissions work
 
-- The **Owner** (created by the installer) has every permission everywhere and is the only one who can create organizations.
+- **Owners** (the first is created by the installer) manage organizations and other owners from **Manage LeanPM** (`/admin`). They see inside an organization only if they're a member of it.
 - Every other member has a **membership** per organization holding their own ticked permissions (JSON). Presets (Admin, Lead, Designer, Viewer) only fill the boxes in.
 - Task permissions are scoped: **No / Own tasks / All tasks**. "Own" = tasks they're assigned to or created.
 - Project access is "all projects" or a chosen list.
@@ -40,5 +40,5 @@ storage/uploads      task files, outside the web root (git-ignored)
 
 - Moving a task into a **Done**-type status sets `completed_at`; moving it out clears it. Reports use this date.
 - Subtasks are one level deep. A top-level task without subtasks can be linked under another task.
-- Deleting a task moves it (and its subtasks) to **Trash**; Owner/“delete all tasks” members restore it.
+- Deleting a task moves it (and its subtasks) to **Trash**; members allowed to delete all tasks restore it.
 - Members are deactivated, never deleted, so history and reports stay complete.

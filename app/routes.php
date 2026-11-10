@@ -31,12 +31,17 @@ $router->post('/account', [AccountController::class, 'update']);
 
 // Organizations
 $router->get('/', [OrgController::class, 'home']);
+$router->get('/admin', [App\Controllers\AdminController::class, 'index']);
+$router->post('/admin/orgs/{id}/rename', [App\Controllers\AdminController::class, 'rename']);
+$router->post('/admin/orgs/{id}/admins', [App\Controllers\AdminController::class, 'storeAdmin']);
+$router->post('/admin/orgs/{id}/delete', [App\Controllers\AdminController::class, 'destroy']);
+$router->post('/admin/owners', [App\Controllers\AdminController::class, 'storeOwner']);
+$router->post('/admin/owners/{id}/remove', [App\Controllers\AdminController::class, 'removeOwner']);
 $router->get('/orgs/new', [OrgController::class, 'create']);
 $router->post('/orgs', [OrgController::class, 'store']);
 $router->get('/o/{org}', [OrgController::class, 'show']);
 $router->get('/o/{org}/settings', [OrgController::class, 'settings']);
 $router->post('/o/{org}/settings', [OrgController::class, 'updateSettings']);
-$router->post('/o/{org}/delete', [OrgController::class, 'destroy']);
 $router->get('/o/{org}/trash', [OrgController::class, 'trash']);
 $router->post('/o/{org}/trash/{task}/restore', [OrgController::class, 'restore']);
 

@@ -7,7 +7,6 @@ use App\Core\Auth;
 use App\Core\Database as DB;
 use App\Services\Access;
 use App\Services\Activity;
-use App\Services\Perms;
 
 final class OrgController
 {
@@ -17,7 +16,7 @@ final class OrgController
         $orgs = Access::myOrgs();
         if (!$orgs) {
             if (Auth::isOwner()) {
-                redirect('/orgs/new');
+                redirect('/admin');
             }
             abort(403, 'You aren’t a member of any organization yet. Ask your admin to add you.');
         }
@@ -32,21 +31,30 @@ final class OrgController
 
     public function create(): string
     {
-        if (!Auth::isOwner()) {
-            abort(403, 'Only the Owner can create organizations.');
-        }
+        Access::owner();
         return view('org/new', ['title' => 'New organization']);
     }
 
     public function store(): never
     {
-        if (!Auth::isOwner()) {
-            abort(403);
-        }
+        Access::owner();
         $name = mb_substr((string) input('name', ''), 0, 120);
         $project = mb_substr((string) input('project', ''), 0, 120) ?: 'Design';
+        $adminName = mb_substr(trim((string) input('admin_name', '')), 0, 120);
+        $adminEmail = mb_strtolower(trim((string) input('admin_email', '')));
+        $errors = [];
         if ($name === '') {
-            with_input_errors(['name' => 'Give the organization a name.'], $_POST);
+            $errors['name'] = 'Give the organization a name.';
+        }
+        if ($adminEmail !== '' && !filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+            $errors['admin_email'] = 'Enter a valid email address, or leave it empty.';
+        }
+        $isMe = $adminEmail !== '' && $adminEmail === mb_strtolower((string) Auth::user()['email']);
+        if ($adminEmail !== '' && !$isMe && $adminName === '' && !DB::value('SELECT COUNT(*) FROM users WHERE email = ?', [$adminEmail])) {
+            $errors['admin_name'] = 'Enter their name.';
+        }
+        if ($errors) {
+            with_input_errors($errors, $_POST);
             redirect('/orgs/new');
         }
         $slug = slugify($name);
@@ -55,19 +63,25 @@ final class OrgController
             $slug = $base . '-' . $i;
         }
         $template = \App\Services\Tasks::template((string) input('template'));
-        $projectId = DB::transaction(function () use ($name, $slug, $project, $template) {
+        [$orgId, $projectId] = DB::transaction(function () use ($name, $slug, $project, $template) {
+            // The owner creating it is not added: they join only if they name themselves as the admin.
             $orgId = DB::insert('organizations', ['name' => $name, 'slug' => $slug, 'created_by' => Auth::id(), 'created_at' => now()]);
-            DB::insert('memberships', [
-                'org_id' => $orgId, 'user_id' => Auth::id(), 'preset' => 'admin',
-                'permissions' => json_encode(Perms::all()), 'all_projects' => 1, 'active' => 1, 'joined_at' => now(),
-            ]);
             $pid = DB::insert('projects', ['org_id' => $orgId, 'name' => $project, 'created_by' => Auth::id(), 'created_at' => now()]);
             \App\Services\Tasks::createDefaultStatuses($pid, $template);
             \App\Services\Fields::addTemplate($pid, $template);
-            return $pid;
+            return [$orgId, $pid];
         });
-        flash('success', "{$name} is ready. Add your team from Members.");
-        redirect("/o/{$slug}/p/{$projectId}");
+        $o = DB::one('SELECT * FROM organizations WHERE id = ?', [$orgId]);
+        if ($adminEmail === '') {
+            flash('success', "{$name} is ready. It has no members yet: use “Add admin” to invite the person who will run it.");
+            redirect('/admin');
+        }
+        AdminController::addAdmin($o, $adminName, $adminEmail);
+        if ($isMe) {
+            flash('success', "{$name} is ready and you’re its admin. Add your team from Members.");
+            redirect("/o/{$slug}/p/{$projectId}");
+        }
+        redirect('/admin');
     }
 
     /** The organization's first project, or an empty state. */
@@ -103,46 +117,6 @@ final class OrgController
         DB::update('organizations', ['name' => $name], 'id = ?', [$o['id']]);
         flash('success', 'Saved.');
         redirect("/o/{$o['slug']}/settings");
-    }
-
-    /**
-     * Permanently delete an organization and everything in it: projects, tasks, comments,
-     * files and memberships. Owner only, confirmed by typing the organization's name.
-     * People's accounts stay (they may belong to other organizations).
-     */
-    public function destroy(string $org): never
-    {
-        $o = Access::org($org);
-        if (!Auth::isOwner()) {
-            abort(403, 'Only the Owner can delete an organization.');
-        }
-        if (trim((string) input('confirm_name')) !== $o['name']) {
-            flash('error', 'The name you typed didn’t match, so nothing was deleted.');
-            redirect("/o/{$o['slug']}/settings");
-        }
-        DB::transaction(function () use ($o) {
-            // Tasks first (their comments, files, assignees and history go with them), then the
-            // organization (its memberships, projects and stages go with it).
-            DB::query('UPDATE tasks SET parent_id = NULL WHERE project_id IN (SELECT id FROM projects WHERE org_id = ?)', [$o['id']]);
-            DB::query('DELETE FROM tasks WHERE project_id IN (SELECT id FROM projects WHERE org_id = ?)', [$o['id']]);
-            DB::query('DELETE FROM organizations WHERE id = ?', [$o['id']]);
-        });
-        self::removeDir(config('storage_path') . '/uploads/' . (int) $o['id']);
-        unset($_SESSION['last_org']);
-        flash('success', "“{$o['name']}” and everything in it was deleted.");
-        redirect('/');
-    }
-
-    private static function removeDir(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        $items = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
-        foreach ($items as $item) {
-            $item->isDir() && !$item->isLink() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
-        }
-        @rmdir($dir);
     }
 
     /** Deleted tasks (and their subtasks) can be restored by the Owner or anyone who can delete any task. */

@@ -138,6 +138,8 @@ chmod -R 775 storage
 | `https://leanpm.houseofjugaad.in/config/local.php` | Forbidden |
 | `https://leanpm.houseofjugaad.in/storage/` | Forbidden |
 
+Sign in with the Owner account. You land on **Manage LeanPM**. Create your organization there, and enter **your own email** as the person who runs it if you want to work in it yourself (owners aren't added to organizations automatically).
+
 Sign in, then **+ New organization** → `Sportskeeda` → go to **Members** → **+ Add member** for each designer. Each new member gets a temporary password to send them; they choose their own at first sign-in.
 
 ## Step 9: Email (invites, password resets, @mentions)
@@ -209,4 +211,4 @@ This lets members sign in with their Google account. It only works for people yo
 | “Access denied for user” | DB name/user/password don't match Step 3 (use the full `u…_` names). |
 | Uploads fail or say “too large” | Raise `upload_max_filesize` / `post_max_size` (Step 2); `chmod -R 775 storage`. |
 | Git deploy “directory not empty” | Empty the leanpm folder and deploy again. |
-| Forgot the Owner password | Over SSH: `php -r 'require "app/bootstrap.php"; App\Core\Database::query("UPDATE users SET password_hash=? WHERE is_owner=1", [password_hash($argv[1], PASSWORD_DEFAULT)]);' 'NEW-PASSWORD'` |
+| Forgot the Owner password | Over SSH: `php -r 'require "app/bootstrap.php"; App\Core\Database::query("UPDATE users SET password_hash=? WHERE email=?", [password_hash($argv[1], PASSWORD_DEFAULT), $argv[2]]);' 'NEW-PASSWORD' 'you@example.com'` (or use **Forgot your password?** once email works) |

@@ -38,8 +38,9 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
           <?php if ($org && Access::can('org_settings')): ?>
             <a href="<?= e(url('/o/' . $org['slug'] . '/settings')) ?>" class="muted">Organization settings…</a>
           <?php endif; ?>
+          <?php if (!$orgs): ?><span class="muted small menu-note">You aren’t a member of any organization.</span><?php endif; ?>
           <?php if (Auth::isOwner()): ?>
-            <a href="<?= e(url('/orgs/new')) ?>" class="muted">+ New organization</a>
+            <a href="<?= e(url('/admin')) ?>" class="muted">Manage LeanPM…</a>
           <?php endif; ?>
         </div>
       </details>
@@ -99,6 +100,15 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
         <span class="label">Settings</span>
       </a>
       <?php endif; ?>
+    </nav>
+    <?php endif; ?>
+
+    <?php if (Auth::isOwner()): ?>
+    <nav class="side-nav side-nav-owner">
+      <a href="<?= e(url('/admin')) ?>" class="side-link<?= $active('/admin') ?>" data-tip="Manage LeanPM" aria-label="Manage LeanPM">
+        <svg class="i" viewBox="0 0 20 20"><path d="M3 17V7l7-4 7 4v10"/><path d="M7 17v-5h6v5M3 17h14"/></svg>
+        <span class="label">Manage LeanPM</span>
+      </a>
     </nav>
     <?php endif; ?>
 

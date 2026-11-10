@@ -16,14 +16,14 @@ final class Mentions
     public static function candidates(int $orgId, int $projectId): array
     {
         $rows = DB::all(
-            'SELECT u.id, u.name, u.email, u.notify_mentions, u.is_owner, m.all_projects, m.id AS membership_id
+            'SELECT u.id, u.name, u.email, u.notify_mentions, m.all_projects, m.id AS membership_id
              FROM users u JOIN memberships m ON m.user_id = u.id
              WHERE m.org_id = ? AND m.active = 1',
             [$orgId]
         );
         $out = [];
         foreach ($rows as $r) {
-            $ok = $r['is_owner'] || (int) $r['all_projects']
+            $ok = (int) $r['all_projects']
                 || DB::value('SELECT 1 FROM membership_projects WHERE membership_id = ? AND project_id = ?', [$r['membership_id'], $projectId]);
             if ($ok) {
                 $out[(int) $r['id']] = ['id' => (int) $r['id'], 'name' => $r['name'], 'email' => $r['email'], 'notify_mentions' => (int) $r['notify_mentions']];

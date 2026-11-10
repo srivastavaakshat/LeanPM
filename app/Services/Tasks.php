@@ -283,6 +283,10 @@ final class Tasks
                 'updated_at'   => now(),
                 'completed_at' => $status['type'] === 'done' ? now() : null,
             ]);
+            // The person creating it is assigned by default; they can change it from there.
+            if (Auth::id()) {
+                DB::insert('task_assignees', ['task_id' => $id, 'user_id' => Auth::id()]);
+            }
             Activity::log($id, 'created');
             if ($parent) {
                 Activity::log((int) $parent['id'], 'subtask_added', null, $title);

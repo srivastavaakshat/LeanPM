@@ -18,8 +18,8 @@ Design teams track work in ClickUp or Trello, but those tools are heavy, expensi
 
 ## 3. Users
 
-- **Owner** (Akshat): created by the installer. Has every permission in every organization and can't be locked out.
-- **Members**: created by the Owner, or by anyone with the *Manage members* permission. What each member can do is set member by member with checkboxes (see 5.1a).
+- **Owners** (Akshat first, created by the installer): run LeanPM itself from **Manage LeanPM**. They create, rename and delete organizations, add an organization's admin, and add or remove other owners. That is all they can do as owners. Creating an organization does **not** make them a member; to work inside one, they add their own email as a member or admin like anyone else. An owner can't remove themselves, so there is always at least one.
+- **Members**: added by an owner (as an organization's admin), or by anyone with the *Manage members* permission. What each member can do is set member by member with checkboxes (see 5.1a).
 
 ## 4. Structure
 
@@ -39,10 +39,12 @@ Organization (e.g. Sportskeeda)
 ## 5. Features
 
 ### 5.1 Organizations and members
-- Create an organization (name, logo optional).
+- Create an organization (owners only): name, first project and its template, and optionally who runs it (name + email). That person becomes its admin with every permission and gets an invite email. The owner creating it isn't added unless they enter their own email.
+- **Manage LeanPM** (owners): every organization with its admins and size, and **Add admin**, **Rename** and **Delete** for each; plus the list of owners and **Add owner** / **Remove owner**. A new owner gets an email with a set-password link.
+- **Your account:** change your name, your sign-in email (asks for your current password) and your password.
 - **Add a member:** enter their name and email.
   - They get an **invite email** with a one-time link to set their password, valid for 7 days. Someone who already has an account just gets an "added to <organization>" email.
-  - The link is also shown to the admin, in case the email doesn't arrive (or email isn't set up yet).
+  - The link is also shown to the admin, in case the email doesn't arrive (or email isn't set up yet). It's never shown for an owner's account or for someone who's also in another organization: those links go by email only, so one org's admin can't take over an account that reaches further.
   - **Resend invite** appears for people who haven't signed in yet.
 - **Password resets:**
   - An admin's **Reset password** makes the old password stop working and emails a link to choose a new one, valid for 3 days.
@@ -51,8 +53,8 @@ Organization (e.g. Sportskeeda)
 - One person can be a member of several organizations, with different permissions in each.
 - Deactivate a member. They can no longer sign in, but their tasks, comments, and history stay and show their name as "(inactive)". Nobody is ever hard-deleted, so reports stay accurate.
 - Each organization's data is fully separate.
-- **Rename** an organization in its Settings (Owner, or members with *Organization settings*).
-- **Delete an organization** (Owner only): this permanently removes its projects, tasks, comments, files, and memberships. You confirm by typing the organization's name. People's accounts stay, because they may belong to other organizations.
+- **Rename** an organization from Manage LeanPM (owners) or its Settings (members with *Organization settings*).
+- **Delete an organization** (owners, from Manage LeanPM): this permanently removes its projects, tasks, comments, files, and memberships. You confirm by typing the organization's name. People's accounts stay, because they may belong to other organizations.
 
 ### 5.1b Sign in with Google
 - When Google credentials are configured, the sign-in page shows **Sign in with Google**. Email and password still work.
@@ -156,7 +158,7 @@ A permission change takes effect on the member's next page load. The member's pr
 | Title | Required |
 | Description | Rich text: bold, lists, links, headings |
 | Status | From the project's statuses |
-| Assignees | Several allowed |
+| Assignees | Several allowed. A new task is assigned to the person who creates it; change it from there. CSV imports use the file's assignees. |
 | Priority | Urgent / High / Normal / Low / None |
 | Start date | Optional |
 | Due date | Optional; overdue is highlighted |
@@ -334,3 +336,4 @@ email when you're assigned a task · project-level files and links (not attached
 - **15 Oct 2026:** No online/presence indicators.
 - **15 Oct 2026:** Email notifications (assignment and @mentions) ship together in a later version. They need a Hostinger mailbox and a cron job.
 - **15 Oct 2026:** @mentions with email moved into v1 (comments and descriptions). Assignment emails stay in a later version.
+- **10 Nov 2026:** Owners are LeanPM-wide admins, not org members. Creating an organization no longer adds the owner; they can name its admin instead. More owners can be added. New tasks are assigned to their creator by default.
