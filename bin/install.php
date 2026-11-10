@@ -30,7 +30,7 @@ if (isset($opts['fresh'])) {
     if (config('env') === 'production') {
         exit("Refusing --fresh in production. It would delete all data.\n");
     }
-    $tables = ['task_field_values', 'project_fields', 'email_queue', 'activity', 'attachments', 'comments', 'task_assignees', 'tasks', 'statuses', 'membership_projects', 'projects', 'memberships', 'organizations', 'users', 'login_attempts', 'schema_migrations'];
+    $tables = ['password_tokens', 'notes_entries', 'notes_docs', 'task_field_values', 'project_fields', 'email_queue', 'activity', 'attachments', 'comments', 'task_assignees', 'tasks', 'statuses', 'membership_projects', 'projects', 'memberships', 'organizations', 'users', 'login_attempts', 'schema_migrations'];
     DB::pdo()->exec($driver === 'mysql' ? 'SET FOREIGN_KEY_CHECKS = 0' : 'PRAGMA foreign_keys = OFF');
     foreach ($tables as $t) {
         DB::pdo()->exec("DROP TABLE IF EXISTS $t");

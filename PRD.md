@@ -40,7 +40,14 @@ Organization (e.g. Sportskeeda)
 
 ### 5.1 Organizations and members
 - Create an organization (name, logo optional).
-- **Add a member directly:** name, email, and a temporary password, which they must change at first sign-in. Sending an email invite is optional and needs a Hostinger mailbox set up over SMTP.
+- **Add a member:** enter their name and email.
+  - They get an **invite email** with a one-time link to set their password, valid for 7 days. Someone who already has an account just gets an "added to <organization>" email.
+  - The link is also shown to the admin, in case the email doesn't arrive (or email isn't set up yet).
+  - **Resend invite** appears for people who haven't signed in yet.
+- **Password resets:**
+  - An admin's **Reset password** makes the old password stop working and emails a link to choose a new one, valid for 3 days.
+  - **Forgot your password?** on the sign-in page emails a link valid for 1 hour. It's rate-limited, and it gives the same answer whether or not the email has an account.
+  - Links work once. Only a hash of each link is stored.
 - One person can be a member of several organizations, with different permissions in each.
 - Deactivate a member. They can no longer sign in, but their tasks, comments, and history stay and show their name as "(inactive)". Nobody is ever hard-deleted, so reports stay accurate.
 - Each organization's data is fully separate.

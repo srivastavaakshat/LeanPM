@@ -10,4 +10,4 @@
   <?= error_for('email') ?>
   <button class="btn btn-primary btn-block">Sign in</button>
 </form>
-<p class="hint">Accounts are created by your admin. Forgot your password? Ask them to reset it.</p>
+<p class="hint"><a href="<?= e(url('/password/forgot')) ?>">Forgot your password?</a> · Accounts are created by your admin.</p>

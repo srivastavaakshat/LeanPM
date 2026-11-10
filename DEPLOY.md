@@ -140,9 +140,14 @@ chmod -R 775 storage
 
 Sign in, then **+ New organization** → `Sportskeeda` → go to **Members** → **+ Add member** for each designer. Each new member gets a temporary password to send them; they choose their own at first sign-in.
 
-## Step 9: @mention emails
+## Step 9: Email (invites, password resets, @mentions)
 
-When someone types `@Name` in a comment or a description, that person gets an email. Each person can turn this off under **Your account**.
+LeanPM sends these emails:
+- **Invites:** when you add someone under Members, they get a link to set their password.
+- **Password resets:** when you click **Reset password** on a member, or someone uses **Forgot your password?** on the sign-in page, they get a link to choose a new one.
+- **@mentions:** when someone is tagged in a comment or description, they get an email. Each person can turn this off under **Your account**.
+
+Until a mailbox is set up, nothing is sent. The Members page then shows the invite or reset link for you to copy and send yourself.
 
 1. **Create a mailbox.** hPanel → **Emails** → on `houseofjugaad.in` create `leanpm@houseofjugaad.in` and set a password.
 2. **Add it to the server config.** Over SSH, run `nano config/local.php` and add the `mail` block from `config/local.example.php` with that mailbox's password. Save.

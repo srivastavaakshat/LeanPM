@@ -10,12 +10,16 @@ unset($_SESSION['new_credentials']);
     <?php if ($canManage): ?><a class="btn btn-primary" href="<?= e(url('/o/' . $org['slug'] . '/members/new')) ?>">+ Add member</a><?php endif; ?>
   </header>
 
-  <?php if ($creds): ?>
+  <?php if ($creds): $mailOn = \App\Services\Mailer::configured(); ?>
   <div class="card creds">
-    <h2 class="card-title"><?= !empty($creds['reset']) ? 'New temporary password for ' : 'Added ' ?><?= e($creds['name']) ?></h2>
-    <p>Send them these sign-in details. The password is shown only once; they’ll choose their own the first time they sign in.</p>
-    <pre id="creds-text">Sign in to LeanPM: <?= e($creds['url']) . "\n" ?>Email: <?= e($creds['email']) . "\n" ?>Temporary password: <?= e($creds['password']) ?></pre>
-    <button type="button" class="btn btn-sm" data-copy="#creds-text">Copy</button>
+    <h2 class="card-title"><?= match ($creds['kind']) { 'invite' => 'Invite for ', default => 'Password reset for ' } ?><?= e($creds['name']) ?></h2>
+    <?php if ($mailOn): ?>
+      <p>We emailed <strong><?= e($creds['email']) ?></strong> a link to <?= $creds['kind'] === 'invite' ? 'set their password (valid for 7 days)' : 'choose a new password (valid for 3 days)' ?>. If it doesn’t arrive, send them this link yourself:</p>
+    <?php else: ?>
+      <p><strong>Email isn’t set up on this server yet</strong>, so nothing was sent. Send <?= e($creds['email']) ?> this link yourself (WhatsApp, Slack…). It works once, for <?= $creds['kind'] === 'invite' ? '7' : '3' ?> days:</p>
+    <?php endif; ?>
+    <pre id="creds-text"><?= e($creds['link']) ?></pre>
+    <button type="button" class="btn btn-sm" data-copy="#creds-text">Copy link</button>
   </div>
   <?php endif; ?>
 
@@ -28,10 +32,15 @@ unset($_SESSION['new_credentials']);
           <td><div class="row-center"><?= avatar($r) ?><div><strong><?= e($r['name']) ?></strong><?= $r['active'] ? '' : ' <span class="tag">Inactive</span>' ?><div class="muted small"><?= e($r['email']) ?></div></div></div></td>
           <td><?= e($r['label']) ?></td>
           <td><?= $r['is_owner'] || $r['all_projects'] ? 'All' : 'Selected' ?></td>
-          <td class="muted"><?= $r['must_change_password'] ? 'Not yet' : e(fmt_date($r['last_login_at'], 'j M, g:i a')) ?></td>
+          <td class="muted"><?= $r['last_login_at'] === null ? 'Invited, not signed in yet' : e(fmt_date($r['last_login_at'], 'j M, g:i a')) ?></td>
           <td class="right">
             <?php if ($canManage && !$r['is_owner'] && (int) $r['user_id'] !== \App\Core\Auth::id()): ?>
+              <span class="row-center gap-s" style="justify-content:flex-end">
+              <?php if ($r['last_login_at'] === null && $r['active']): ?>
+                <form method="post" action="<?= e(url('/o/' . $org['slug'] . '/members/' . $r['id'] . '/reset-password')) ?>"><?= csrf_field() ?><button class="btn btn-sm" title="Email them a new invite link">Resend invite</button></form>
+              <?php endif; ?>
               <a class="btn btn-sm" href="<?= e(url('/o/' . $org['slug'] . '/members/' . $r['id'])) ?>">Permissions</a>
+              </span>
             <?php endif; ?>
           </td>
         </tr>

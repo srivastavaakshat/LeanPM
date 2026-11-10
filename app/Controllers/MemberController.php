@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Database as DB;
+use App\Services\AccountEmails;
 use App\Services\Access;
 use App\Services\Perms;
 
@@ -65,15 +66,15 @@ final class MemberController
         }
         [$preset, $perms, $all, $projectIds] = $this->submitted();
 
-        $password = null;
-        DB::transaction(function () use ($o, $name, $email, &$user, &$password, $preset, $perms, $all, $projectIds) {
+        $isNew = !$user;
+        DB::transaction(function () use ($o, $name, $email, &$user, $preset, $perms, $all, $projectIds) {
             if (!$user) {
-                $password = random_password();
+                // Nobody knows this password; they choose their own from the invite link.
                 $id = DB::insert('users', [
-                    'name' => $name, 'email' => $email, 'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                    'name' => $name, 'email' => $email, 'password_hash' => password_hash(random_password(32), PASSWORD_DEFAULT),
                     'color' => random_color(), 'is_owner' => 0, 'must_change_password' => 1, 'created_at' => now(),
                 ]);
-                $user = ['id' => $id, 'name' => $name];
+                $user = ['id' => $id, 'name' => $name, 'email' => $email];
             }
             $mid = DB::insert('memberships', [
                 'org_id' => $o['id'], 'user_id' => $user['id'], 'preset' => $preset, 'permissions' => json_encode($perms),
@@ -82,11 +83,15 @@ final class MemberController
             $this->saveProjects($mid, $all, $projectIds);
         });
 
-        if ($password) {
-            // Shown once, so the admin can pass it on. The member must change it at first sign-in.
-            $_SESSION['new_credentials'] = ['name' => $name, 'email' => $email, 'password' => $password, 'url' => absolute_url('/login')];
+        $inviter = (string) Auth::user()['name'];
+        if ($isNew) {
+            $link = AccountEmails::link((int) $user['id'], 'invite');
+            AccountEmails::invite($user, $o, $inviter, $link);
+            // The link is also shown here, in case the email doesn't arrive.
+            $_SESSION['new_credentials'] = ['name' => $name, 'email' => $email, 'link' => $link, 'kind' => 'invite'];
         } else {
-            flash('success', "{$user['name']} already had an account, so they can sign in with their usual password.");
+            AccountEmails::addedToOrg($user, $o, $inviter);
+            flash('success', "{$user['name']} already had an account, so they sign in with their usual password. We emailed them that you added them.");
         }
         redirect("/o/{$o['slug']}/members");
     }
@@ -141,9 +146,21 @@ final class MemberController
         $o = Access::org($org);
         Access::require('manage_members');
         $m = $this->load($o, (int) $member, forChange: true);
-        $password = random_password();
-        DB::update('users', ['password_hash' => password_hash($password, PASSWORD_DEFAULT), 'must_change_password' => 1], 'id = ?', [$m['user_id']]);
-        $_SESSION['new_credentials'] = ['name' => $m['name'], 'email' => $m['email'], 'password' => $password, 'url' => absolute_url('/login'), 'reset' => true];
+        $user = DB::one('SELECT * FROM users WHERE id = ?', [$m['user_id']]);
+        $inviter = (string) Auth::user()['name'];
+        if ($user['last_login_at'] === null) {
+            // Never signed in: send the invite again.
+            $link = AccountEmails::link((int) $user['id'], 'invite');
+            AccountEmails::invite($user, $o, $inviter, $link);
+            $kind = 'invite';
+        } else {
+            // The old password stops working; they choose a new one from the email.
+            DB::update('users', ['password_hash' => password_hash(random_password(32), PASSWORD_DEFAULT)], 'id = ?', [$user['id']]);
+            $link = AccountEmails::link((int) $user['id'], 'reset');
+            AccountEmails::reset($user, $link, $inviter);
+            $kind = 'reset';
+        }
+        $_SESSION['new_credentials'] = ['name' => $m['name'], 'email' => $m['email'], 'link' => $link, 'kind' => $kind];
         redirect("/o/{$o['slug']}/members");
     }
 

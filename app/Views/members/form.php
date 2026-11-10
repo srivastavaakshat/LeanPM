@@ -26,7 +26,7 @@ foreach (Perms::PRESETS as $k => $p) {
         <label class="field"><span>Email</span><input type="email" name="email" value="<?= e(old('email')) ?>" required maxlength="190"></label>
       </div>
       <?= error_for('name') ?><?= error_for('email') ?>
-      <p class="hint">You’ll get a temporary password to send them. If they already have an account (from another organization), they keep their password.</p>
+      <p class="hint">They’ll get an email with a link to set their own password. If they already have an account (from another organization), they keep their password and just get a heads-up.</p>
     </div>
     <?php endif; ?>
 
@@ -90,8 +90,8 @@ foreach (Perms::PRESETS as $k => $p) {
   <div class="card stack danger-zone">
     <h2 class="card-title">Account</h2>
     <div class="row-between">
-      <div><strong>Reset password</strong><div class="muted small">Gives them a new temporary password to change at next sign-in.</div></div>
-      <form method="post" action="<?= e(url($action . '/reset-password')) ?>" data-confirm="Reset <?= e($member['name']) ?>’s password?"><?= csrf_field() ?><button class="btn btn-sm">Reset password</button></form>
+      <div><strong>Reset password</strong><div class="muted small">Their current password stops working and they get an email to choose a new one.</div></div>
+      <form method="post" action="<?= e(url($action . '/reset-password')) ?>" data-confirm="Reset <?= e($member['name']) ?>’s password? Their current password stops working and they get an email to choose a new one."><?= csrf_field() ?><button class="btn btn-sm">Reset password</button></form>
     </div>
     <div class="row-between">
       <div><strong><?= $member['active'] ? 'Deactivate' : 'Reactivate' ?></strong><div class="muted small"><?= $member['active'] ? 'They can’t sign in to this organization. Their tasks and comments stay.' : 'Let them sign in again.' ?></div></div>
