@@ -292,7 +292,6 @@
         cards,
         boot.can.create ? addTaskButton(s) : null);
       board.append(col);
-      dropZone(cards, s);
     });
     if (boot.can.statuses) board.append(h('a', { class: 'add-column', href: boot.settingsUrl }, svg(ICON.plus), 'Add or edit stages'));
     return board;
@@ -310,7 +309,7 @@
     if (t.comments) counts.append(h('span', { title: 'Comments' }, svg(ICON.chat), t.comments));
     if (t.files) counts.append(h('span', { title: 'Files' }, svg(ICON.clip), t.files));
     const el = h('article', {
-      class: 'tcard' + (isDone(t) ? ' is-done' : ''), draggable: t.can.move ? 'true' : null, tabindex: '0',
+      class: 'tcard' + (isDone(t) ? ' is-done' : '') + (t.can.move ? ' can-move' : '') + (state.landed === t.id ? ' is-landed' : ''), tabindex: '0',
       dataset: { id: t.id },
       onclick: () => openTask(t.id),
       onkeydown: e => { if (e.key === 'Enter') openTask(t.id); },
@@ -319,59 +318,178 @@
       h('div', { class: 'tcard-title' }, t.title),
       meta.children.length ? meta : null,
       counts.children.length ? counts : null);
-    if (t.can.move) {
-      el.addEventListener('dragstart', e => {
-        dragging = t.id;
-        el.classList.add('is-dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', String(t.id));
-      });
-      el.addEventListener('dragend', () => { el.classList.remove('is-dragging'); dragging = null; document.querySelectorAll('.drop-marker').forEach(m => m.remove()); });
-    }
+    if (t.can.move) el.addEventListener('pointerdown', e => dragStart(e, t, el));
     return el;
   }
 
-  let dragging = null;
-  function dropZone(container, status) {
-    const marker = () => container.querySelector('.drop-marker') || h('div', { class: 'drop-marker' });
-    const afterEl = y => [...container.querySelectorAll('.tcard:not(.is-dragging)')].find(c => {
-      const r = c.getBoundingClientRect();
-      return y < r.top + r.height / 2;
-    });
-    container.addEventListener('dragover', e => {
-      if (!dragging) return;
-      e.preventDefault();
-      const m = marker();
-      const after = afterEl(e.clientY);
-      if (after) container.insertBefore(m, after); else container.append(m);
-    });
-    container.addEventListener('dragleave', e => { if (!container.contains(e.relatedTarget)) container.querySelector('.drop-marker')?.remove(); });
-    container.addEventListener('drop', async e => {
-      e.preventDefault();
-      const id = dragging;
-      const m = container.querySelector('.drop-marker');
-      if (!id || !m) return;
-      const el = document.querySelector(`.tcard[data-id="${id}"]`);
-      container.insertBefore(el, m);
-      m.remove();
-      // Full order of the column (including cards hidden by filters, kept in their place at the end).
-      const shown = [...container.querySelectorAll('.tcard')].map(c => +c.dataset.id);
-      const hidden = state.tasks.filter(t => t.status_id === status.id && !shown.includes(t.id) && t.id !== id).sort((a, b) => a.position - b.position).map(t => t.id);
-      const order = [...shown, ...hidden];
-      const t = taskById(id);
-      const prev = { status_id: t.status_id, completed_at: t.completed_at };
-      t.status_id = status.id;
-      order.forEach((tid, i) => { const x = taskById(tid); if (x) x.position = i; });
-      render();
-      try {
-        const data = await api('POST', `/api/tasks/${id}/move`, { status_id: status.id, order });
-        upsert(data.task);
-        if (state.openId === id) refreshDetail();
-        render();
-      } catch {
-        Object.assign(t, prev);
-        reloadTasks();
+  // ---------- drag a card between stages ----------
+  // Pointer-based rather than HTML drag-and-drop, so the lifted card follows the hand: it tilts
+  // with the movement, a slot opens where it will land, and it settles into that slot on release.
+  // Mouse: drag after moving 5px. Touch: press and hold briefly, so swiping still scrolls the board.
+  let drag = null;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function dragStart(e, t, el) {
+    if (e.button !== 0 || drag || e.target.closest('a, button, input, select')) return;
+    const touch = e.pointerType !== 'mouse';
+    const d = drag = { t, el, id: t.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, pointerId: e.pointerId, tilt: 0, vx: 0 };
+    if (touch) d.hold = setTimeout(() => activate(d), 220);
+    const move = ev => {
+      if (ev.pointerId !== d.pointerId) return;
+      d.vx = ev.clientX - d.x; d.x = ev.clientX; d.y = ev.clientY;
+      if (!d.active) {
+        const far = Math.hypot(d.x - d.x0, d.y - d.y0) > (touch ? 8 : 5);
+        if (far && touch) return end(false);          // a swipe before the hold: let it scroll
+        if (far) activate(d);
+        return;
       }
+      ev.preventDefault();
+      frame();
+    };
+    const up = ev => { if (ev.pointerId === d.pointerId) end(d.active); };
+    const key = ev => { if (ev.key === 'Escape' && d.active) { ev.preventDefault(); end(false, true); } };
+    const blockScroll = ev => { if (d.active) ev.preventDefault(); };
+    function end(commit, cancelled = false) {
+      clearTimeout(d.hold);
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      removeEventListener('pointercancel', up);
+      removeEventListener('keydown', key, true);
+      removeEventListener('touchmove', blockScroll);
+      if (d.active) finish(d, commit && !cancelled); else drag = null;
+    }
+    addEventListener('pointermove', move, { passive: false });
+    addEventListener('pointerup', up);
+    addEventListener('pointercancel', up);
+    addEventListener('keydown', key, true);
+    addEventListener('touchmove', blockScroll, { passive: false });
+  }
+
+  function activate(d) {
+    if (d.active || drag !== d) return;
+    d.active = true;
+    const r = d.el.getBoundingClientRect();
+    d.dx = d.x - r.left; d.dy = d.y - r.top;
+    d.from = d.el.parentElement;
+    d.slot = h('div', { class: 'drop-slot', style: `height:${r.height}px` });
+    d.ghost = d.el.cloneNode(true);
+    d.ghost.classList.add('is-ghost');
+    d.ghost.classList.remove('is-landed');
+    Object.assign(d.ghost.style, { width: r.width + 'px', left: '0px', top: '0px', transform: `translate(${r.left}px, ${r.top}px)` });
+    document.body.append(d.ghost);
+    d.el.replaceWith(d.slot);
+    document.body.classList.add('is-dragging-card');
+    navigator.vibrate?.(8);
+    requestAnimationFrame(() => d.ghost.classList.add('is-lifted'));
+    frame();
+    d.scroller = setInterval(() => autoScroll(d), 16);
+  }
+
+  // Follow the pointer, tilt with the speed, and move the slot to where the card would land.
+  function frame() {
+    const d = drag;
+    if (!d?.active || d.raf) return;
+    d.raf = requestAnimationFrame(() => {
+      d.raf = 0;
+      d.tilt += (Math.max(-7, Math.min(7, d.vx * 0.9)) - d.tilt) * 0.25;
+      d.vx *= 0.6;
+      d.ghost.style.transform = `translate(${d.x - d.dx}px, ${d.y - d.dy}px) rotate(${reduceMotion ? 0 : d.tilt.toFixed(2)}deg) scale(1.03)`;
+      if (Math.abs(d.tilt) > 0.05 || Math.abs(d.vx) > 0.05) frame();
+      placeSlot(d);
+    });
+  }
+
+  function placeSlot(d) {
+    const cols = [...document.querySelectorAll('.board .cards')];
+    if (!cols.length) return;
+    // The column under the pointer, else the nearest one horizontally.
+    let target = cols.find(c => { const r = c.closest('.column').getBoundingClientRect(); return d.x >= r.left && d.x <= r.right; });
+    if (!target) target = cols.reduce((best, c) => { const r = c.getBoundingClientRect(); const dist = Math.abs(d.x - (r.left + r.right) / 2); return !best || dist < best.dist ? { c, dist } : best; }, null).c;
+    document.querySelectorAll('.column.is-target').forEach(c => c !== target.closest('.column') && c.classList.remove('is-target'));
+    target.closest('.column').classList.add('is-target');
+    const after = [...target.querySelectorAll('.tcard')].find(c => { const r = c.getBoundingClientRect(); return d.y < r.top + r.height / 2; });
+    if (d.slot.parentElement === target && (after ? d.slot.nextElementSibling === after : d.slot === target.lastElementChild)) return;
+    flip([d.slot.parentElement, target], () => { if (after) target.insertBefore(d.slot, after); else target.append(d.slot); });
+  }
+
+  // Animate cards from their old spots to their new ones when the slot moves (FLIP).
+  function flip(containers, change) {
+    const cards = [...new Set(containers)].flatMap(c => [...c.querySelectorAll('.tcard')]);
+    const before = new Map(cards.map(c => [c, c.getBoundingClientRect().top]));
+    change();
+    if (reduceMotion) return;
+    cards.forEach(c => {
+      const dy = before.get(c) - c.getBoundingClientRect().top;
+      if (!dy) return;
+      c.style.transition = 'none';
+      c.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(() => { c.style.transition = ''; c.style.transform = ''; });
+    });
+  }
+
+  function autoScroll(d) {
+    const view = $('view'), r = view.getBoundingClientRect(), edge = 70;
+    if (d.x < r.left + edge) view.scrollLeft -= (r.left + edge - d.x) / 4;
+    else if (d.x > r.right - edge) view.scrollLeft += (d.x - (r.right - edge)) / 4;
+    const cards = d.slot.parentElement, cr = cards?.getBoundingClientRect();
+    if (cr && d.y < cr.top + 40) cards.scrollTop -= 8;
+    else if (cr && d.y > cr.bottom - 40) cards.scrollTop += 8;
+    placeSlot(d);
+  }
+
+  // Settle the card into its slot (or back where it came from), then save the move.
+  function finish(d, commit) {
+    // The click that follows this pointerup mustn't open the task.
+    const block = ev => { ev.stopPropagation(); ev.preventDefault(); };
+    addEventListener('click', block, true);
+    setTimeout(() => removeEventListener('click', block, true), 0);
+    clearInterval(d.scroller);
+    cancelAnimationFrame(d.raf);
+    if (!commit) flip([d.slot.parentElement, d.from], () => d.from.append(d.slot));
+    const container = d.slot.parentElement;
+    const status = state.statuses.find(s => String(s.id) === container.dataset.status);
+    const sr = d.slot.getBoundingClientRect();
+    d.ghost.classList.remove('is-lifted');
+    d.ghost.classList.add('is-settling');
+    d.ghost.style.transform = `translate(${sr.left}px, ${sr.top}px)`;
+    const done = () => {
+      if (d.ended) return;
+      d.ended = true;
+      d.ghost.remove();
+      d.slot.replaceWith(d.el);
+      document.querySelectorAll('.column.is-target').forEach(c => c.classList.remove('is-target'));
+      document.body.classList.remove('is-dragging-card');
+      drag = null;
+      if (commit && status) commitMove(container, status, d.id);
+      if (d.redraw) render();
+    };
+    d.ghost.addEventListener('transitionend', done, { once: true });
+    setTimeout(done, reduceMotion ? 0 : 320);
+  }
+
+  // Save a card's new place. Returns without doing anything if it ended where it started.
+  function commitMove(container, status, id) {
+    // Full order of the column (including cards hidden by filters, kept in their place at the end).
+    const shown = [...container.querySelectorAll('.tcard')].map(c => +c.dataset.id);
+    const hidden = state.tasks.filter(t => t.status_id === status.id && !shown.includes(t.id) && t.id !== id).sort((a, b) => a.position - b.position).map(t => t.id);
+    const order = [...shown, ...hidden];
+    const t = taskById(id);
+    const prev = { status_id: t.status_id, completed_at: t.completed_at, position: t.position };
+    const same = t.status_id === status.id && state.tasks.filter(x => x.status_id === status.id).sort((a, b) => a.position - b.position || a.id - b.id).map(x => x.id).join() === order.join();
+    if (same) return;
+    t.status_id = status.id;
+    order.forEach((tid, i) => { const x = taskById(tid); if (x) x.position = i; });
+    // A brief lime glow on the card where it landed.
+    state.landed = id;
+    setTimeout(() => { if (state.landed === id) { state.landed = null; document.querySelector(`.tcard[data-id="${id}"]`)?.classList.remove('is-landed'); } }, 900);
+    render();
+    api('POST', `/api/tasks/${id}/move`, { status_id: status.id, order }).then(data => {
+      upsert(data.task);
+      if (state.openId === id) refreshDetail();
+      render();
+    }).catch(() => {
+      Object.assign(t, prev);
+      reloadTasks();
     });
   }
 
@@ -598,6 +716,7 @@
 
   // ---------- render ----------
   function render() {
+    if (drag?.active) { drag.redraw = true; return; } // redrawn when the card is dropped
     syncToolbar();
     const view = $('view');
     // Keep the scroll position when re-drawing the same view; start at the top-left after switching views.
