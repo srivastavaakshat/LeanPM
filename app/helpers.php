@@ -33,7 +33,14 @@ function app_dir(): string
     if (PHP_SAPI === 'cli') {
         return '';
     }
-    return rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+    $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+    // On Hostinger the root .htaccess forwards every request into /public, so the script lives in
+    // /public but visitors never see that folder in the address.
+    $path = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+    if (str_ends_with($dir, '/public') && !str_starts_with($path, $dir . '/') && $path !== $dir) {
+        $dir = substr($dir, 0, -7);
+    }
+    return $dir;
 }
 
 function base_url(): string

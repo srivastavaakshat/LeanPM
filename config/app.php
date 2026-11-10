@@ -6,8 +6,9 @@
  */
 $config = [
     'name'          => 'LeanPM',
-    'env'           => 'local',            // local | production
-    'debug'         => true,
+    // Safe by default: detailed errors only when running locally with `php -S`. config/local.php can override.
+    'env'           => PHP_SAPI === 'cli-server' ? 'local' : 'production',   // local | production
+    'debug'         => PHP_SAPI === 'cli-server',
     'url'           => '',                 // e.g. https://leanpm.houseofjugaad.in (no trailing slash). Empty = auto-detect.
     'base_path'     => null,               // URL prefix. '' when the root .htaccess forwards into /public. null = auto-detect.
     'timezone'      => 'Asia/Kolkata',
