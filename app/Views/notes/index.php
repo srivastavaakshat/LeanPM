@@ -15,7 +15,7 @@ $base = '/o/' . $org['slug'] . '/notes';
   <?php if (!$docs): ?>
     <div class="card empty-state notes-empty">
       <h2>Start your first meeting doc</h2>
-      <p>For example “Internal stand-up”, “Call with Mayank (CEO)” or “Sales team sync”. Write notes during the call, type <kbd>/</kbd> at the end of a line to turn it into a task, and next time you’ll see what was decided and how those tasks are going.</p>
+      <p>For example “Internal stand-up”, “Weekly client call” or “Sales team sync”. Write notes during the call, type <kbd>/</kbd> at the end of a line to turn it into a task, and next time you’ll see what was decided and how those tasks are going.</p>
       <button type="button" class="btn btn-primary" data-open="new-doc">+ New doc</button>
     </div>
   <?php else: ?>
@@ -43,7 +43,7 @@ $base = '/o/' . $org['slug'] . '/notes';
   <form method="post" action="<?= e(url($base)) ?>">
     <?= csrf_field() ?>
     <h2>New meeting doc</h2>
-    <label class="field"><span>Name</span><input name="title" required maxlength="120" placeholder="e.g. Call with Mayank (CEO)" autofocus></label>
+    <label class="field"><span>Name</span><input name="title" required maxlength="120" placeholder="e.g. Weekly design review" autofocus></label>
     <label class="field"><span>New tasks from these notes go to</span>
       <select name="default_project">
         <?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>"><?= $p['inbox'] ? 'Inbox (sort them into projects later)' : e($p['name']) ?></option><?php endforeach; ?>
