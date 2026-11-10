@@ -90,6 +90,9 @@ final class ProjectController
         $o = Access::org($org);
         $p = Access::project((int) $project);
         Access::require('manage_projects');
+        if ((int) $p['is_inbox']) {
+            abort(403, 'The Inbox can’t be renamed.');
+        }
         $name = mb_substr((string) input('name', ''), 0, 120);
         if ($name !== '') {
             DB::update('projects', ['name' => $name], 'id = ?', [$p['id']]);
@@ -103,6 +106,9 @@ final class ProjectController
         $o = Access::org($org);
         $p = Access::project((int) $project);
         Access::require('manage_projects');
+        if ((int) $p['is_inbox']) {
+            abort(403, 'The Inbox can’t be archived.');
+        }
         $archive = input('archived') === '1';
         DB::update('projects', ['archived' => $archive ? 1 : 0], 'id = ?', [$p['id']]);
         flash('success', $archive ? "“{$p['name']}” is archived. Restore it any time from Organization settings." : "“{$p['name']}” is back.");

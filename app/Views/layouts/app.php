@@ -50,6 +50,19 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
 
     <?php if ($org): $base = '/o/' . $org['slug']; ?>
     <nav class="side-nav">
+      <?php $inboxOpen = (int) \App\Core\Database::value("SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.project_id = ? AND t.deleted_at IS NULL AND t.parent_id IS NULL AND s.type <> 'done'", [Access::inboxId()]); ?>
+      <a href="<?= e(url($base . '/tasks')) ?>" class="side-link<?= $active($base . '/tasks') ?>" data-tip="All tasks<?= $inboxOpen ? " · {$inboxOpen} in Inbox" : '' ?>" aria-label="All tasks">
+        <svg class="i" viewBox="0 0 20 20"><rect x="3.5" y="3.5" width="13" height="13" rx="3"/><path d="M7 10.2l2.2 2.2L13.5 8"/></svg>
+        <span class="label">All tasks</span>
+        <?php if ($inboxOpen): ?><span class="side-badge" title="<?= $inboxOpen ?> in the Inbox, not in a project yet"><?= $inboxOpen ?></span><?php endif; ?>
+      </a>
+      <?php if (Access::can('meeting_notes')): ?>
+      <a href="<?= e(url($base . '/notes')) ?>" class="side-link<?= $active($base . '/notes') ?>" data-tip="Meeting notes" aria-label="Meeting notes">
+        <svg class="i" viewBox="0 0 20 20"><path d="M6 3h5l4 4v9a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M11 3v4h4M8 11h5M8 14h3"/></svg>
+        <span class="label">Meeting notes</span>
+      </a>
+      <?php endif; ?>
+
       <div class="side-label"><span class="label">Projects</span>
         <?php if (Access::can('manage_projects')): ?>
           <button type="button" class="icon-btn" data-open="new-project" data-tip="New project" aria-label="New project">+</button>

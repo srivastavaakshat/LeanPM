@@ -86,6 +86,7 @@ When adding or editing a member, the admin first picks a **starting preset** and
 | Configure stages | Add, rename, reorder, and recolor a project's board columns, or switch them to a template. Also manages the project's custom fields. |
 | Export CSV reports | Can be limited to **their own tasks only** |
 | Manage members | Add or deactivate members and set permissions. A member can never grant permissions they don't have themselves. |
+| Use meeting notes | Keep meeting notes docs and see shared ones |
 | Organization settings | Name and logo |
 
 **Presets** (they only fill in the checkboxes as a starting point)
@@ -229,6 +230,34 @@ A permission change takes effect on the member's next page load. The member's pr
   - Done-stage tasks get their completed date from the file, or today.
 - **Afterwards:** a report lists anything that couldn't be matched (stages, people, dates, field values, rows with no title). The imported tasks themselves are kept.
 - **Limits and permissions:** up to 2,000 rows or 5 MB per file. Columns the person isn't allowed to set (assignees, priority/dates/fields) are skipped and reported. The import page offers a sample CSV with the project's stages and fields.
+
+### 5.12 Meeting notes
+- **Docs:** one running doc per meeting series, e.g. "Internal stand-up", "Call with Mayank (CEO)", or "Sales team sync". Listed under **Meeting notes** in the sidebar.
+  - A doc is private to the person who created it unless shared with the organization.
+  - Members can read a shared doc and add their own entries. Only the creator can edit others' entries, change the doc's settings, or delete it.
+- **Entries:** a doc is a stream of dated entries, newest first, each headed like "Today · Tuesday, 10 November 2026 · 3:23 pm" with an optional title.
+  - Opening a doc puts a fresh entry for *now* at the top with the cursor in it. It's only saved once something is written, so viewing a doc never leaves empty entries.
+  - **+ New entry** starts another, e.g. a second meeting the same day.
+  - Older entries stay editable and save automatically.
+- **Writing:** bold, italic, headings, lists, and links. Pasting a URL makes it a link, and Cmd/Ctrl+click opens a link.
+- **Create a task from a line:** type `/` (or `\`) at the end of a line and choose **Task** (or click **Task** in the toolbar).
+  - The line becomes an inline form: a TASK tag, the name prefilled from the line, a project picker, and ✓ / ✕. Enter creates the task and the cursor moves to a new line.
+  - The line then shows a **live task chip** with a checkbox (ticked when done), title, current stage, project, people, and due date.
+  - The task's history records which meeting doc it came from.
+- **Default project:** each doc has a "New tasks go to" project, or the **Inbox** if none is set. It can be overridden on each task.
+- **Quick view:** clicking a task chip opens a side panel. It shows and changes the stage, due date, and project, lists the latest updates, and can add an update, without leaving the notes. "Open task" opens the full task on its board.
+- **Side panel:** lists *Tasks from this doc* (open first, done collapsed) with live stages, and *Meetings*, a list of earlier entries to jump to.
+- **Permission:** *Use meeting notes* is on for Admin, Lead, and Designer, and off for Viewer. Creating tasks still needs *Create tasks*.
+
+### 5.13 All tasks and the Inbox
+- **All tasks** (sidebar) lists every task the member can see, grouped by project, with search, *Assigned to me*, *Hide done*, and *Show subtasks*.
+  - The sidebar shows how many open tasks are waiting in the Inbox.
+- **Inbox:** every organization has one, for tasks that aren't in a project yet, such as ones from meeting notes. It's shown first and highlighted, with a **Move to project…** picker on each task. All members can see it.
+- **Moving a task to another project** (from All tasks, or the quick view's Project field):
+  - Its subtasks move with it.
+  - Its stage is matched by name, otherwise by kind (not started / in progress / done), keeping its completed date.
+  - Custom field values carry over to fields with the same name and type.
+  - It's recorded in the task's history. A subtask moved on its own becomes a normal task.
 
 ## 6. Data model (draft)
 

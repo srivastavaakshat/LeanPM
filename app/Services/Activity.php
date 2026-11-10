@@ -29,6 +29,8 @@ final class Activity
         return match ($a['action']) {
             'created'          => 'created this task',
             'imported'         => 'imported this task from a CSV',
+            'from_notes'       => "created this task from the meeting notes “{$to}”",
+            'moved_project'    => "moved this task from {$from} to {$to}",
             'status'           => "changed status from {$from} to {$to}",
             'title'            => "renamed this task to “{$to}”",
             'description'      => 'updated the description',

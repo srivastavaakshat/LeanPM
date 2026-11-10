@@ -21,7 +21,7 @@
   </div>
 
   <?php if (\App\Core\Auth::isOwner()):
-    $counts = \App\Core\Database::one('SELECT (SELECT COUNT(*) FROM projects WHERE org_id = ?) AS projects, (SELECT COUNT(*) FROM tasks t JOIN projects p ON p.id = t.project_id WHERE p.org_id = ?) AS tasks, (SELECT COUNT(*) FROM memberships WHERE org_id = ?) AS members', [$org['id'], $org['id'], $org['id']]); ?>
+    $counts = \App\Core\Database::one('SELECT (SELECT COUNT(*) FROM projects WHERE org_id = ? AND is_inbox = 0) AS projects, (SELECT COUNT(*) FROM tasks t JOIN projects p ON p.id = t.project_id WHERE p.org_id = ?) AS tasks, (SELECT COUNT(*) FROM memberships WHERE org_id = ?) AS members', [$org['id'], $org['id'], $org['id']]); ?>
   <form method="post" action="<?= e(url('/o/' . $org['slug'] . '/delete')) ?>" class="card stack danger-zone delete-org">
     <?= csrf_field() ?>
     <h2 class="card-title">Delete organization</h2>

@@ -49,7 +49,7 @@ final class Access
             if (!$m || !(int) $m['active']) {
                 abort(404);
             }
-            $m['perms'] = Perms::decode($m['permissions']);
+            $m['perms'] = Perms::decode($m['permissions'], $m['preset']);
             $m['project_ids'] = (int) $m['all_projects'] ? null
                 : array_map('intval', array_column(DB::all('SELECT project_id FROM membership_projects WHERE membership_id = ?', [$m['id']]), 'project_id'));
         }
@@ -114,13 +114,36 @@ final class Access
     public static function canSeeProject(int $projectId): bool
     {
         $ids = self::$member['project_ids'] ?? null;
-        return $ids === null || in_array($projectId, $ids, true);
+        // Everyone in the org can see the Inbox (tasks not sorted into a project yet).
+        return $ids === null || in_array($projectId, $ids, true) || $projectId === self::inboxId();
     }
 
-    /** Projects this member can open in the current org. */
+    private static array $inboxIds = [];
+
+    /** The org's Inbox project id (created the first time it's needed). */
+    public static function inboxId(): int
+    {
+        $orgId = (int) (self::$org['id'] ?? 0);
+        if (!$orgId) {
+            return 0;
+        }
+        if (!isset(self::$inboxIds[$orgId])) {
+            $id = (int) DB::value('SELECT id FROM projects WHERE org_id = ? AND is_inbox = 1 ORDER BY id LIMIT 1', [$orgId]);
+            if (!$id) {
+                $id = DB::insert('projects', ['org_id' => $orgId, 'name' => 'Inbox', 'is_inbox' => 1, 'created_by' => Auth::id(), 'created_at' => now()]);
+                foreach ([['To do', '#8b8f98', 'open'], ['Doing', '#0ea5e9', 'active'], ['Done', '#22c55e', 'done']] as $i => [$n, $c, $t]) {
+                    DB::insert('statuses', ['project_id' => $id, 'name' => $n, 'color' => $c, 'type' => $t, 'position' => $i]);
+                }
+            }
+            self::$inboxIds[$orgId] = $id;
+        }
+        return self::$inboxIds[$orgId];
+    }
+
+    /** Projects this member can open in the current org (never the Inbox; see inboxId()). */
     public static function projects(bool $includeArchived = false): array
     {
-        $rows = DB::all('SELECT * FROM projects WHERE org_id = ?' . ($includeArchived ? '' : ' AND archived = 0') . ' ORDER BY name', [self::$org['id']]);
+        $rows = DB::all('SELECT * FROM projects WHERE org_id = ? AND is_inbox = 0' . ($includeArchived ? '' : ' AND archived = 0') . ' ORDER BY name', [self::$org['id']]);
         return array_values(array_filter($rows, fn ($p) => self::canSeeProject((int) $p['id'])));
     }
 

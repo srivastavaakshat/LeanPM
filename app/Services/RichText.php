@@ -52,8 +52,11 @@ final class RichText
                     $node->removeChild($child);
                     continue;
                 }
-                // The only span kept is an @mention chip: <span class="mention" data-user="12">@Name</span>
-                if ($tag === 'span' && !($child->getAttribute('class') === 'mention' && ctype_digit($child->getAttribute('data-user')))) {
+                // Spans kept: an @mention chip <span class="mention" data-user="12">@Name</span>, and a task chip
+                // from meeting notes <span class="task-ref" data-task="34">Title</span>. Anything else is unwrapped.
+                $isMention = $child->getAttribute('class') === 'mention' && ctype_digit($child->getAttribute('data-user'));
+                $isTask = $child->getAttribute('class') === 'task-ref' && ctype_digit($child->getAttribute('data-task'));
+                if ($tag === 'span' && !$isMention && !$isTask) {
                     while ($child->firstChild) {
                         $node->insertBefore($child->firstChild, $child);
                     }
@@ -61,13 +64,17 @@ final class RichText
                     continue;
                 }
                 $user = $tag === 'span' ? $child->getAttribute('data-user') : '';
+                $taskRef = $tag === 'span' ? $child->getAttribute('data-task') : '';
                 $href = $tag === 'a' ? $child->getAttribute('href') : '';
                 foreach (iterator_to_array($child->attributes) as $attr) {
                     $child->removeAttribute($attr->name);
                 }
-                if ($tag === 'span') {
+                if ($tag === 'span' && $user !== '') {
                     $child->setAttribute('class', 'mention');
                     $child->setAttribute('data-user', $user);
+                } elseif ($tag === 'span') {
+                    $child->setAttribute('class', 'task-ref');
+                    $child->setAttribute('data-task', $taskRef);
                 }
                 if ($tag === 'a') {
                     if (preg_match('#^(https?://|mailto:)#i', trim($href))) {

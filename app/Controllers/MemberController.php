@@ -20,7 +20,7 @@ final class MemberController
             [$o['id']]
         );
         foreach ($rows as &$r) {
-            $r['perms'] = Perms::decode($r['permissions']);
+            $r['perms'] = Perms::decode($r['permissions'], $r['preset']);
             $r['label'] = $r['is_owner'] ? 'Owner' : Perms::label($r['preset'], $r['perms']);
         }
         return view('members/index', ['title' => 'Members', 'rows' => $rows, 'canManage' => Access::can('manage_members')]);
@@ -96,7 +96,7 @@ final class MemberController
         $o = Access::org($org);
         Access::require('manage_members');
         $m = $this->load($o, (int) $member);
-        $perms = Perms::decode($m['permissions']);
+        $perms = Perms::decode($m['permissions'], $m['preset']);
         return view('members/form', [
             'title'       => $m['name'],
             'member'      => $m,

@@ -21,6 +21,7 @@ final class Perms
         'comment'         => ['Comment', 'Comments and files', 'bool', 'Everyone can edit or delete their own comments'],
         'upload'          => ['Upload files', 'Comments and files', 'bool', ''],
         'moderate'        => ['Delete anyone’s comments and files', 'Comments and files', 'bool', ''],
+        'meeting_notes'   => ['Use meeting notes', 'Workspace', 'bool', 'Keep meeting notes docs and see notes shared with the organization'],
         'manage_projects' => ['Create, rename and archive projects', 'Workspace', 'bool', ''],
         'manage_statuses' => ['Configure stages', 'Workspace', 'bool', 'Add, rename, reorder and recolor a project’s board columns, or switch them to a template'],
         'export'          => ['Export CSV reports', 'Workspace', 'scope', '“Own” = only tasks they’re assigned to'],
@@ -32,25 +33,25 @@ final class Perms
         'admin' => [
             'label' => 'Admin',
             'perms' => ['create_tasks' => true, 'edit_tasks' => 'all', 'move_tasks' => 'all', 'assign' => 'all', 'set_fields' => 'all', 'delete_tasks' => 'all',
-                        'comment' => true, 'upload' => true, 'moderate' => true, 'manage_projects' => true, 'manage_statuses' => true,
+                        'comment' => true, 'upload' => true, 'moderate' => true, 'meeting_notes' => true, 'manage_projects' => true, 'manage_statuses' => true,
                         'export' => 'all', 'manage_members' => true, 'org_settings' => true],
         ],
         'lead' => [
             'label' => 'Lead',
             'perms' => ['create_tasks' => true, 'edit_tasks' => 'all', 'move_tasks' => 'all', 'assign' => 'all', 'set_fields' => 'all', 'delete_tasks' => 'all',
-                        'comment' => true, 'upload' => true, 'moderate' => true, 'manage_projects' => true, 'manage_statuses' => true,
+                        'comment' => true, 'upload' => true, 'moderate' => true, 'meeting_notes' => true, 'manage_projects' => true, 'manage_statuses' => true,
                         'export' => 'all', 'manage_members' => false, 'org_settings' => false],
         ],
         'designer' => [
             'label' => 'Designer',
             'perms' => ['create_tasks' => true, 'edit_tasks' => 'own', 'move_tasks' => 'own', 'assign' => 'own', 'set_fields' => 'own', 'delete_tasks' => 'none',
-                        'comment' => true, 'upload' => true, 'moderate' => false, 'manage_projects' => false, 'manage_statuses' => false,
+                        'comment' => true, 'upload' => true, 'moderate' => false, 'meeting_notes' => true, 'manage_projects' => false, 'manage_statuses' => false,
                         'export' => 'own', 'manage_members' => false, 'org_settings' => false],
         ],
         'viewer' => [
             'label' => 'Viewer',
             'perms' => ['create_tasks' => false, 'edit_tasks' => 'none', 'move_tasks' => 'none', 'assign' => 'none', 'set_fields' => 'none', 'delete_tasks' => 'none',
-                        'comment' => true, 'upload' => false, 'moderate' => false, 'manage_projects' => false, 'manage_statuses' => false,
+                        'comment' => true, 'upload' => false, 'moderate' => false, 'meeting_notes' => false, 'manage_projects' => false, 'manage_statuses' => false,
                         'export' => 'none', 'manage_members' => false, 'org_settings' => false],
         ],
     ];
@@ -78,9 +79,15 @@ final class Perms
         return $out;
     }
 
-    public static function decode(?string $json): array
+    /**
+     * A member's saved permissions. A permission added after they were saved (e.g. meeting_notes)
+     * isn't in their JSON yet; it takes the value from their preset, so nobody silently loses access.
+     */
+    public static function decode(?string $json, ?string $preset = null): array
     {
-        return self::normalize(json_decode((string) $json, true) ?: []);
+        $saved = json_decode((string) $json, true) ?: [];
+        $defaults = self::PRESETS[$preset ?? '']['perms'] ?? [];
+        return self::normalize($saved + $defaults);
     }
 
     /** Never grant more than the granter has. */

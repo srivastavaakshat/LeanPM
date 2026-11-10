@@ -71,27 +71,8 @@ final class TaskApiController
                 abort(422, 'Subtasks can’t have their own subtasks.');
             }
         }
-        $statuses = Tasks::statuses((int) $p['id']);
-        $status = !empty($in['status_id']) ? Tasks::status((int) $p['id'], $in['status_id']) : $statuses[0];
-
-        $id = DB::transaction(function () use ($p, $title, $parent, $status) {
-            $id = DB::insert('tasks', [
-                'project_id'   => $p['id'],
-                'parent_id'    => $parent['id'] ?? null,
-                'status_id'    => $status['id'],
-                'title'        => $title,
-                'position'     => Tasks::nextPosition((int) $p['id'], (int) $status['id']),
-                'created_by'   => Auth::id(),
-                'created_at'   => now(),
-                'updated_at'   => now(),
-                'completed_at' => $status['type'] === 'done' ? now() : null,
-            ]);
-            Activity::log($id, 'created');
-            if ($parent) {
-                Activity::log((int) $parent['id'], 'subtask_added', null, $title);
-            }
-            return $id;
-        });
+        $status = !empty($in['status_id']) ? Tasks::status((int) $p['id'], $in['status_id']) : null;
+        $id = Tasks::create($p, $title, $status, $parent);
         $task = DB::one('SELECT * FROM tasks WHERE id = ?', [$id]);
         json_response(['task' => Tasks::serializeMany([$task])[0]], 201);
     }
@@ -291,6 +272,22 @@ final class TaskApiController
             Activity::log((int) $child['id'], 'parent_set', null, $parent['title']);
         });
         json_response(['task' => Tasks::detail(Access::task((int) $parent['id']))]);
+    }
+
+    /** Move a task (with its subtasks) to another project, e.g. out of the Inbox. */
+    public function moveProject(string $task): never
+    {
+        $t = Access::task((int) $task);
+        Access::requireTask('edit_tasks', $t);
+        Access::require('create_tasks');
+        $target = Access::project((int) (json_input()['project_id'] ?? 0));
+        if ((int) $target['archived']) {
+            abort(422, 'That project is archived.');
+        }
+        if ((int) $target['id'] !== (int) $t['project_id']) {
+            Tasks::moveToProject($t, $target);
+        }
+        json_response(['task' => Tasks::detail(Access::task((int) $t['id']))]);
     }
 
     /** Make a subtask a normal task again. */

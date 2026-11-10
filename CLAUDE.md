@@ -6,6 +6,9 @@
 - Status changes go through `Tasks::setStatus()` so `completed_at` and the activity log stay right (reports depend on `completed_at`).
 - Custom fields: definitions in `project_fields`, values in `task_field_values` (text). Validate with `Fields::clean()`; templates in `Fields::TEMPLATES` sit beside the stage templates in `Tasks::TEMPLATES` (same keys).
 - Outgoing email goes through `EmailQueue::push()` (never send inline). Locally, without `mail.host`, `Mailer` writes to `storage/logs/mail.log`.
+- Every org has a hidden **Inbox** project (`projects.is_inbox = 1`, created by `Access::inboxId()`): not in `Access::projects()`, but visible to all members. Create tasks with `Tasks::create()`; move them with `Tasks::moveToProject()`.
+- Meeting notes: `notes_docs` / `notes_entries`; task chips are `<span class="task-ref" data-task="ID">title</span>` inside entry HTML (kept by `RichText::clean()`), hydrated live by `public/assets/notes.js`. `peek.js` is the shared quick-view panel.
+- A permission added later falls back to the member's preset (`Perms::decode($json, $preset)`), so existing members don't silently lose access.
 - Log user-visible task changes with `Activity::log()` and add a sentence in `Activity::describe()`.
 - Descriptions go through `RichText::clean()`; comments are plain text rendered with `RichText::comment()`. Never echo user HTML anywhere else.
 - Files live in `storage/uploads/{org}/{task}/`, outside the web root, served only by `FileController`.

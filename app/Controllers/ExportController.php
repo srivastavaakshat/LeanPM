@@ -18,7 +18,7 @@ final class ExportController
         return view('org/export', [
             'title'    => 'Export',
             'members'  => Access::members(includeInactive: true),
-            'projects' => Access::projects(true),
+            'projects' => [...Access::projects(true), ['id' => Access::inboxId(), 'name' => 'Inbox', 'archived' => 0]],
             'ownOnly'  => Access::level('export') === 'own',
         ]);
     }
@@ -107,6 +107,7 @@ final class ExportController
         $params = [$o['id']];
 
         $visible = array_map(fn ($p) => (int) $p['id'], Access::projects(true));
+        $visible[] = Access::inboxId(); // tasks not sorted into a project yet
         $chosen = array_values(array_intersect(array_map('intval', (array) ($_GET['projects'] ?? [])), $visible));
         $projects = $chosen ?: $visible;
         if (!$projects) {

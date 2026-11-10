@@ -54,6 +54,14 @@ $router->post('/o/{org}/p/{project}/fields/template', [ProjectController::class,
 $router->post('/o/{org}/p/{project}/fields/{field}/delete', [ProjectController::class, 'deleteField']);
 $router->post('/o/{org}/p/{project}/statuses/{status}/delete', [ProjectController::class, 'deleteStatus']);
 
+// All tasks across projects (Inbox first) and meeting notes
+$router->get('/o/{org}/tasks', [App\Controllers\AllTasksController::class, 'show']);
+$router->get('/o/{org}/notes', [App\Controllers\NotesController::class, 'index']);
+$router->post('/o/{org}/notes', [App\Controllers\NotesController::class, 'store']);
+$router->get('/o/{org}/notes/{doc}', [App\Controllers\NotesController::class, 'show']);
+$router->post('/o/{org}/notes/{doc}/settings', [App\Controllers\NotesController::class, 'update']);
+$router->post('/o/{org}/notes/{doc}/delete', [App\Controllers\NotesController::class, 'destroy']);
+
 // Members and permissions
 $router->get('/o/{org}/members', [MemberController::class, 'index']);
 $router->get('/o/{org}/members/new', [MemberController::class, 'create']);
@@ -72,6 +80,11 @@ $router->get('/o/{org}/export/comments.csv', [ExportController::class, 'comments
 $router->get('/files/{file}', [FileController::class, 'show']);
 
 // JSON API used by the board, list and task panel
+$router->post('/api/notes/{doc}/entries', [App\Controllers\NotesController::class, 'createEntry'], ['api']);
+$router->post('/api/notes/entries/{entry}', [App\Controllers\NotesController::class, 'updateEntry'], ['api']);
+$router->post('/api/notes/entries/{entry}/delete', [App\Controllers\NotesController::class, 'deleteEntry'], ['api']);
+$router->post('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'createTask'], ['api']);
+$router->get('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'tasks'], ['api']);
 $router->get('/api/projects/{project}/tasks', [TaskApiController::class, 'index'], ['api']);
 $router->post('/api/projects/{project}/tasks', [TaskApiController::class, 'store'], ['api']);
 $router->get('/api/projects/{project}/files', [TaskApiController::class, 'files'], ['api']);
@@ -82,6 +95,7 @@ $router->post('/api/tasks/{task}/delete', [TaskApiController::class, 'destroy'],
 $router->get('/api/tasks/{task}/linkable', [TaskApiController::class, 'linkable'], ['api']);
 $router->post('/api/tasks/{task}/subtasks/link', [TaskApiController::class, 'linkSubtask'], ['api']);
 $router->post('/api/tasks/{task}/detach', [TaskApiController::class, 'detach'], ['api']);
+$router->post('/api/tasks/{task}/project', [TaskApiController::class, 'moveProject'], ['api']);
 $router->post('/api/tasks/{task}/files', [CommentApiController::class, 'upload'], ['api']);
 $router->post('/api/tasks/{task}/comments', [CommentApiController::class, 'store'], ['api']);
 $router->post('/api/comments/{comment}', [CommentApiController::class, 'update'], ['api']);

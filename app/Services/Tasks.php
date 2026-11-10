@@ -145,6 +145,7 @@ final class Tasks
     {
         return [
             'id'            => (int) $r['id'],
+            'project_id'    => (int) $r['project_id'],
             'parent_id'     => $r['parent_id'] !== null ? (int) $r['parent_id'] : null,
             'status_id'     => (int) $r['status_id'],
             'title'         => $r['title'],
@@ -184,6 +185,11 @@ final class Tasks
         $data = self::serializeMany([$task])[0];
         $data['description'] = $task['description'];
         $data['project_id'] = (int) $task['project_id'];
+        // For the quick-view panel on pages outside the board (meeting notes, All tasks).
+        $proj = DB::one('SELECT id, name, is_inbox FROM projects WHERE id = ?', [$task['project_id']]);
+        $data['project'] = ['id' => (int) $proj['id'], 'name' => $proj['name'], 'inbox' => (bool) $proj['is_inbox']];
+        $data['statuses'] = array_map(fn ($s) => $s + ['id' => (int) $s['id']], self::statuses((int) $task['project_id']));
+        $data['url'] = url('/o/' . Access::$org['slug'] . '/p/' . $task['project_id'], ['task' => $id]);
         $data['parent'] = $task['parent_id'] ? DB::one('SELECT id, title FROM tasks WHERE id = ? AND deleted_at IS NULL', [$task['parent_id']]) : null;
         $data['subtask_list'] = self::serializeMany(DB::all('SELECT * FROM tasks WHERE parent_id = ? AND deleted_at IS NULL ORDER BY position, id', [$id]));
 
@@ -257,6 +263,91 @@ final class Tasks
             abort(422, 'That status doesn’t exist in this project.');
         }
         return $s;
+    }
+
+    /** Create a task (or subtask) in a project. Returns its id. Callers check permissions first. */
+    public static function create(array $project, string $title, ?array $status = null, ?array $parent = null): int
+    {
+        $status ??= self::statuses((int) $project['id'])[0];
+        return DB::transaction(function () use ($project, $title, $status, $parent) {
+            $id = DB::insert('tasks', [
+                'project_id'   => $project['id'],
+                'parent_id'    => $parent['id'] ?? null,
+                'status_id'    => $status['id'],
+                'title'        => $title,
+                'position'     => self::nextPosition((int) $project['id'], (int) $status['id']),
+                'created_by'   => Auth::id(),
+                'created_at'   => now(),
+                'updated_at'   => now(),
+                'completed_at' => $status['type'] === 'done' ? now() : null,
+            ]);
+            Activity::log($id, 'created');
+            if ($parent) {
+                Activity::log((int) $parent['id'], 'subtask_added', null, $title);
+            }
+            return $id;
+        });
+    }
+
+    /**
+     * Move a task (and its subtasks) to another project in the same org. The stage is matched by
+     * name, else by kind (not started / in progress / done); custom field values carry over to
+     * fields with the same name and type. A subtask moved on its own becomes a normal task.
+     */
+    public static function moveToProject(array $task, array $target): void
+    {
+        $from = DB::one('SELECT * FROM projects WHERE id = ?', [$task['project_id']]);
+        $targetStatuses = self::statuses((int) $target['id']);
+        $targetFields = Fields::forProject((int) $target['id']);
+        $sourceFields = array_column(Fields::forProject((int) $task['project_id']), null, 'id');
+
+        DB::transaction(function () use ($task, $target, $from, $targetStatuses, $targetFields, $sourceFields) {
+            $ids = array_merge([(int) $task['id']], array_map('intval', array_column(DB::all('SELECT id FROM tasks WHERE parent_id = ?', [$task['id']]), 'id')));
+            foreach ($ids as $id) {
+                $t = DB::one('SELECT t.*, s.name AS status_name, s.type AS status_type FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.id = ?', [$id]);
+                $match = null;
+                foreach ($targetStatuses as $s) {
+                    if (mb_strtolower($s['name']) === mb_strtolower($t['status_name'])) {
+                        $match = $s;
+                        break;
+                    }
+                }
+                if (!$match) {
+                    foreach ($targetStatuses as $s) {
+                        if ($s['type'] === $t['status_type']) {
+                            $match = $s;
+                            break;
+                        }
+                    }
+                }
+                $match ??= $targetStatuses[0];
+                $completed = $match['type'] === 'done' ? ($t['completed_at'] ?? now()) : null;
+                DB::update('tasks', [
+                    'project_id' => $target['id'], 'status_id' => $match['id'], 'completed_at' => $completed,
+                    'parent_id' => $id === (int) $task['id'] ? null : $t['parent_id'],
+                    'position' => self::nextPosition((int) $target['id'], (int) $match['id']), 'updated_at' => now(),
+                ], 'id = ?', [$id]);
+
+                foreach (DB::all('SELECT * FROM task_field_values WHERE task_id = ?', [$id]) as $v) {
+                    $src = $sourceFields[(int) $v['field_id']] ?? null;
+                    $dst = null;
+                    foreach ($targetFields as $f) {
+                        if ($src && mb_strtolower($f['name']) === mb_strtolower($src['name']) && $f['type'] === $src['type']) {
+                            $dst = $f;
+                        }
+                    }
+                    DB::query('DELETE FROM task_field_values WHERE task_id = ? AND field_id = ?', [$id, $v['field_id']]);
+                    if ($dst) {
+                        DB::query('DELETE FROM task_field_values WHERE task_id = ? AND field_id = ?', [$id, $dst['id']]);
+                        DB::insert('task_field_values', ['task_id' => $id, 'field_id' => $dst['id'], 'value' => $v['value']]);
+                    }
+                }
+            }
+            if ($task['parent_id']) {
+                Activity::log((int) $task['parent_id'], 'subtask_removed', $task['title']);
+            }
+            Activity::log((int) $task['id'], 'moved_project', $from['name'] ?? '?', $target['name']);
+        });
     }
 
     public static function nextPosition(int $projectId, int $statusId): int
