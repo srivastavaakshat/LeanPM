@@ -19,3 +19,7 @@ storage/local-*.txt
 .idea/
 .vscode/
 storage/imports/
+storage/backups/
+
+# Rendered videos (re-make with: node marketing/intro-video/render.mjs)
+marketing/**/*.mp4

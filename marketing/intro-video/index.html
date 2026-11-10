@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LeanPM intro video (4:3)</title>
+<!-- A 1440×1080 scene rendered frame by frame (render.mjs calls window.seek(t)). It uses the
+     app's own stylesheet, so the board, palette and notes look exactly like LeanPM. -->
+<link rel="stylesheet" href="../../public/assets/app.css">
+<style>
+  html, body { width: 1440px; height: 1080px; margin: 0; overflow: hidden; }
+  body { font-size: 14px; }
+  #stage { position: relative; width: 1440px; height: 1080px; overflow: hidden; }
+  .scene { position: absolute; inset: 0; opacity: 0; will-change: opacity, transform; }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .big { font-size: 92px; font-weight: 800; letter-spacing: -.045em; line-height: 1.02; color: var(--accent); margin: 0; }
+  .mid { font-size: 44px; font-weight: 600; letter-spacing: -.025em; color: var(--muted); margin: 28px 0 0; line-height: 1.2; }
+  .hl { background: linear-gradient(transparent 60%, var(--lime) 60%, var(--lime) 92%, transparent 92%); padding: 0 6px; }
+  .word { display: inline-block; opacity: 0; }
+  .kicker-v { display: inline-flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--lime); padding: 8px 18px; border-radius: 999px; }
+  .caption { position: absolute; left: 0; right: 0; top: 70px; text-align: center; }
+  .caption h2 { font-size: 64px; font-weight: 800; letter-spacing: -.035em; color: var(--accent); margin: 20px 0 0; line-height: 1.05; }
+  .caption p { font-size: 28px; color: var(--muted); margin: 14px 0 0; }
+  .ui { position: absolute; left: 50%; transform-origin: 50% 0; }
+  .win { background: rgba(255, 255, 255, .7); border: 1px solid #fff; border-radius: 26px; box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(20, 33, 61, .07), 0 40px 80px -30px rgba(20, 33, 61, .35); overflow: hidden; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+  .win-bar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid rgba(20, 33, 61, .06); background: rgba(255, 255, 255, .5); }
+  .win-bar i { width: 11px; height: 11px; border-radius: 50%; background: rgba(20, 33, 61, .13); }
+  .win-bar span { margin-left: 10px; font-size: 13px; color: var(--muted); font-weight: 550; }
+
+  /* cursor */
+  #cursor { position: absolute; left: 0; top: 0; width: 34px; height: 34px; z-index: 50; opacity: 0; filter: drop-shadow(0 3px 6px rgba(20, 33, 61, .35)); }
+  #cursor .ring { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--lime); opacity: 0; }
+
+  /* keycast: pressed keys at the bottom */
+  #keycast { position: absolute; left: 0; right: 0; bottom: 56px; display: flex; justify-content: center; gap: 10px; z-index: 60; }
+  .cap { display: inline-grid; place-items: center; min-width: 74px; height: 74px; padding: 0 20px; border-radius: 18px; background: rgba(20, 33, 61, .92); color: #fff; font: 700 30px/1 ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 6px 0 #070d1a, 0 20px 40px -10px rgba(20, 33, 61, .5); opacity: 0; }
+  .cap.lime { background: var(--lime); color: var(--accent); box-shadow: 0 6px 0 #7fae22, 0 20px 40px -10px rgba(20, 33, 61, .4); }
+
+  /* 2: problem */
+  .junk { position: absolute; left: 0; top: 0; padding: 18px 28px; border-radius: 20px; background: rgba(255, 255, 255, .85); box-shadow: 0 0 0 1px rgba(20, 33, 61, .07), 0 18px 36px -18px rgba(20, 33, 61, .35); font-size: 30px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .junk.keep { font-size: 40px; padding: 22px 34px; border-radius: 24px; }
+  .junk.keep { color: #fff; background: var(--accent); }
+  .junk .x { color: #dc2626; margin-right: 10px; }
+
+  /* 3: turn */
+  .logo-big { width: 620px; height: auto; }
+  .by { display: flex; align-items: center; gap: 14px; margin-top: 30px; font-size: 26px; color: var(--muted); }
+  .by .avatar { width: 48px; height: 48px; font-size: 17px; }
+
+  /* 4: board */
+  .vboard { display: flex; gap: 16px; padding: 18px; position: relative; }
+  .vboard .column { width: 292px; max-height: none; }
+  .vboard .cards { overflow: visible; }
+  .slotwrap { overflow: visible; flex: none; }
+  .vslot { border-radius: 16px; border: 1.5px dashed rgba(20, 33, 61, .25); background: rgba(20, 33, 61, .04); box-shadow: inset 0 0 0 4px rgba(183, 243, 74, .16); box-sizing: border-box; }
+  .ghost { position: absolute; z-index: 20; margin: 0; transform-origin: 50% 30%; }
+  .glow { box-shadow: 0 0 0 1px rgba(20, 33, 61, .05), 0 0 0 calc(var(--g) * 6px) rgba(183, 243, 74, calc(var(--g) * .8)) !important; }
+
+  /* 5: notes */
+  .vnotes { width: 740px; padding: 26px 30px 30px; }
+  .vnotes .entry-day { font-size: 16px; }
+  .vlines { margin-top: 12px; font-size: 17.5px; line-height: 1.75; color: var(--text); }
+  .vlines p { margin: 0 0 6px; min-height: 1.75em; }
+  .vcaret { display: inline-block; width: 2px; height: 20px; background: var(--accent); vertical-align: -4px; margin-left: 1px; }
+  .vslash { position: absolute; width: 300px; padding: 6px; }
+  .vslash .picker-item { padding: 8px; }
+  .vrail { width: 300px; padding: 16px 16px 12px; }
+
+  /* 6: keyboard */
+  .caption { z-index: 5; }
+  .vdim { position: absolute; inset: 0; z-index: 2; background: rgba(20, 33, 61, .18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); opacity: 0; }
+  .vpal { position: absolute; z-index: 3; width: 640px; left: 50%; top: 330px; margin-left: -320px; transform-origin: 50% 0; }
+  .vpal .palette { max-height: none; animation: none; }
+  .vtask { position: absolute; z-index: 3; width: 960px; left: 50%; margin-left: -480px; top: 320px; display: grid; grid-template-columns: 1fr 360px; border-radius: 26px; transform-origin: 50% 0; }
+  .vtask-main { padding: 24px 28px; }
+  .vtask-side { border-left: 1px solid rgba(20, 33, 61, .06); background: rgba(246, 247, 250, .6); display: flex; flex-direction: column; }
+  .vtask .task-title { font-size: 26px; padding: 8px 0; }
+  .vfeed { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; justify-content: flex-end; }
+  .vcomment-box { border-top: 1px solid rgba(20, 33, 61, .06); padding: 14px; }
+  .vta { min-height: 66px; border: 1px solid var(--accent); box-shadow: 0 0 0 3px var(--ring); border-radius: 12px; background: #fff; padding: 9px 11px; font-size: 14.5px; line-height: 1.45; }
+  .vta .ph { color: var(--faint); }
+
+  /* 7: reports */
+  .vexport { display: grid; grid-template-columns: 260px 1fr; width: 1100px; }
+  .vform { padding: 22px; display: flex; flex-direction: column; gap: 16px; border-right: 1px solid rgba(20, 33, 61, .06); background: rgba(255, 255, 255, .4); }
+  .vform label { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+  .vform .in { font-size: 15px; font-weight: 500; color: var(--text); background: #fff; border: 1px solid rgba(20, 33, 61, .1); border-radius: 12px; padding: 10px 12px; }
+  .vbtn { text-align: center; font-weight: 600; font-size: 15px; color: #fff; background: var(--accent); border-radius: 999px; padding: 12px; box-shadow: 0 10px 20px -10px rgba(20, 33, 61, .6); }
+  .vcsv { padding: 20px; }
+  .vcsv-name { font: 600 14px ui-monospace, Menlo, monospace; color: var(--muted); margin-bottom: 10px; }
+  .vcsv table { border-collapse: collapse; width: 100%; font: 15px ui-monospace, Menlo, monospace; }
+  .vcsv th, .vcsv td { border: 1px solid rgba(20, 33, 61, .08); padding: 9px 10px; text-align: left; white-space: nowrap; }
+  .vcsv th { background: rgba(255, 255, 255, .7); color: var(--text); }
+  .vcsv td { background: rgba(255, 255, 255, .55); }
+  .vcsv tr { opacity: 0; }
+
+  /* 8: values */
+  .vals { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; width: 1080px; margin-top: 60px; }
+  .val { display: flex; align-items: center; gap: 18px; padding: 28px 30px; border-radius: 26px; background: rgba(255, 255, 255, .7); border: 1px solid #fff; box-shadow: 0 0 0 1px rgba(20, 33, 61, .07), 0 24px 50px -24px rgba(20, 33, 61, .35); font-size: 30px; font-weight: 700; color: var(--accent); letter-spacing: -.02em; text-align: left; opacity: 0; }
+  .val .ic { flex: none; display: grid; place-items: center; width: 58px; height: 58px; border-radius: 16px; background: var(--accent); color: var(--lime); font-size: 28px; }
+
+  /* 9: CTA */
+  .cta-panel { width: 1160px; padding: 80px 70px; border-radius: 44px; background: linear-gradient(150deg, rgba(29, 45, 80, .97), rgba(20, 33, 61, .99)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 50px 100px -40px rgba(20, 33, 61, .7); color: #c9d1e2; position: relative; overflow: hidden; }
+  .cta-panel::before { content: ""; position: absolute; right: -140px; top: -180px; width: 520px; height: 520px; border: 44px solid rgba(183, 243, 74, .09); border-radius: 50%; }
+  .cta-panel h2 { color: #fff; font-size: 96px; font-weight: 800; letter-spacing: -.045em; margin: 26px 0 0; line-height: 1; }
+  .cta-panel p { font-size: 32px; margin: 22px 0 0; }
+  .repo { display: inline-flex; align-items: center; gap: 16px; margin-top: 44px; padding: 20px 34px; border-radius: 999px; background: var(--lime); color: var(--accent); font-size: 34px; font-weight: 800; letter-spacing: -.02em; box-shadow: 0 16px 34px -14px rgba(183, 243, 74, .8); }
+  .repo svg { width: 38px; height: 38px; }
+  .cta-icon { width: 92px; height: 92px; border-radius: 24px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); }
+  .cta-by { margin-top: 34px; font-size: 24px; color: #8f9bb4; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 1. Hook -->
+  <section class="scene center" id="s1">
+    <p class="big" id="hook1"><span class="word">We</span> <span class="word">were</span> <span class="word">paying</span> <span class="word">for</span> <span class="word"><span id="count">0</span></span> <span class="word">features.</span></p>
+    <p class="big" id="hook2" style="margin-top:18px"><span class="word">My</span> <span class="word">team</span> <span class="word">used</span> <span class="word hl">4.</span></p>
+  </section>
+
+  <!-- 2. Problem -->
+  <section class="scene" id="s2">
+    <div class="caption"><h2 id="s2a">Too many clicks. A bill for every seat.</h2><p id="s2b">And our files sat on someone else’s server.</p></div>
+    <div id="junk"></div>
+    <div class="caption" style="top:auto;bottom:90px"><p id="s2c" style="font-size:40px;font-weight:700;color:var(--accent);opacity:0">So I kept only what we actually use.</p></div>
+  </section>
+
+  <!-- 3. Turn -->
+  <section class="scene center" id="s3">
+    <p class="mid" id="s3a" style="margin:0 0 40px;font-size:52px;color:var(--accent);font-weight:800;letter-spacing:-.035em">So I built my own.</p>
+    <img class="logo-big" id="s3logo" src="../../public/assets/logo.svg" alt="LeanPM">
+    <p class="mid" id="s3b">A lean project manager for my design team.</p>
+    <div class="by" id="s3c"><span class="avatar" style="--c:#14213D">AS</span> Akshat Srivastava · designer, team lead</div>
+  </section>
+
+  <!-- 4. Board -->
+  <section class="scene" id="s4">
+    <div class="caption"><span class="kicker-v">01 · Board &amp; list</span><h2>A board that feels good to use.</h2></div>
+    <div class="ui" id="s4ui" style="top:330px;width:960px;margin-left:-480px">
+      <div class="win"><div class="win-bar"><i></i><i></i><i></i><span>Juniper Studio · Website Revamp</span></div>
+        <div class="vboard" id="vboard"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Meeting notes -->
+  <section class="scene" id="s5">
+    <div class="caption"><span class="kicker-v">02 · Meeting notes</span><h2>Notes that turn into tasks.</h2></div>
+    <div class="ui" id="s5ui" style="top:330px;width:1060px;margin-left:-530px;display:flex;gap:20px;align-items:flex-start">
+      <div class="entry vnotes" style="position:relative">
+        <div class="entry-head"><span class="entry-when"><span class="entry-day">Today · Monday, 10 November</span><span class="entry-time">10:00 am</span></span><span class="tag draft-tag">Design stand-up</span></div>
+        <div class="entry-title" style="font-size:22px;font-weight:700;padding:10px 0 0">Monday stand-up</div>
+        <div class="vlines" id="vlines"></div>
+        <div class="popover slash-menu vslash" id="vslash" style="opacity:0">
+          <div class="slash-label">Create</div>
+          <div class="picker-item is-on"><span class="slash-icon"><svg class="i" viewBox="0 0 20 20"><rect x="3.5" y="3.5" width="13" height="13" rx="3"/><path d="M7 10.2l2.2 2.2L13.5 8"/></svg></span><span class="grow"><strong>Task</strong><span class="muted small slash-hint"> — turn this line into a task</span></span></div>
+          <div class="slash-foot muted small">Goes to Website Revamp · Esc to keep typing</div>
+        </div>
+      </div>
+      <div class="rail-card vrail" id="vrail">
+        <h3>Tasks from this doc <span class="muted small" id="railcount">2 open</span></h3>
+        <div id="railtasks"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Keyboard -->
+  <section class="scene" id="s6">
+    <div class="caption"><span class="kicker-v">03 · Keyboard first</span><h2>Run it all from the keyboard.</h2></div>
+    <div class="ui" id="s6bg" style="top:300px;width:960px;margin-left:-480px">
+      <div class="win"><div class="win-bar"><i></i><i></i><i></i><span>Juniper Studio · Website Revamp</span></div><div class="vboard" id="vboard2"></div></div>
+    </div>
+    <div class="vdim" id="vdim"></div>
+    <div class="vpal" id="vpal">
+      <div class="palette">
+        <div class="palette-search"><svg class="i" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17"/></svg><span class="palette-input" id="palq" style="display:flex;align-items:center;font-size:18px"></span><kbd>esc</kbd></div>
+        <div class="palette-list" id="pallist"></div>
+        <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>esc</kbd> close</span><span class="palette-foot-right"><kbd>?</kbd> all shortcuts</span></div>
+      </div>
+    </div>
+    <div class="vtask win" id="vtask">
+      <div class="vtask-main">
+        <div class="task-type"><span class="status-dot" style="--sc:#0ea5e9"></span>Task <span class="muted">&nbsp;#1</span></div>
+        <div class="task-title">Homepage hero: three directions</div>
+        <div class="fields">
+          <div class="field-row"><span class="field-label">Status</span><span class="field-value"><span class="status-select big" style="--sc:#0ea5e9;display:inline-flex;align-items:center;height:30px;font-size:12px">IN PROGRESS</span></span></div>
+          <div class="field-row"><span class="field-label">Assignees</span><span class="field-value"><span class="person"><span class="avatar sm" style="--c:#14213D">AS</span> Akshat Srivastava</span></span></div>
+          <div class="field-row"><span class="field-label">Due</span><span class="field-value" style="color:#c2410c;font-weight:600">Today</span></div>
+          <div class="field-row"><span class="field-label">Figma file</span><span class="field-value" style="color:var(--accent);text-decoration:underline">figma.com/design/kQ2rT8…</span></div>
+        </div>
+      </div>
+      <div class="vtask-side">
+        <h3 class="side-title">Activity</h3>
+        <div class="vfeed" id="vfeed">
+          <div class="comment"><div class="comment-head"><span class="avatar sm" style="--c:#db2777">AM</span><strong>Ayushi Mehra</strong><time>yesterday</time></div><div class="comment-body">Direction B is closest to the brief. Crop the product a little tighter?</div></div>
+        </div>
+        <div class="vcomment-box"><div class="vta" id="vta"></div><div class="row-between" style="margin-top:8px"><span class="muted small">⌘↵ to send</span><span class="btn btn-sm btn-primary" id="vsend">Comment</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Reports -->
+  <section class="scene" id="s7">
+    <div class="caption"><span class="kicker-v">04 · Reports</span><h2>The month-end report, in one click.</h2></div>
+    <div class="ui" id="s7ui" style="top:330px;width:1100px;margin-left:-550px">
+      <div class="win vexport">
+        <div class="vform">
+          <label>Members<span class="in">Everyone</span></label>
+          <label>From<span class="in">1 Oct 2026</span></label>
+          <label>To<span class="in">31 Oct 2026</span></label>
+          <span class="vbtn" id="vbtn">Download tasks.csv</span>
+        </div>
+        <div class="vcsv">
+          <div class="vcsv-name">juniper-studio-tasks-october.csv</div>
+          <table><thead><tr style="opacity:1"><th>Title</th><th>Assignees</th><th>Completed</th><th>Days</th><th>Overdue</th></tr></thead>
+            <tbody id="csvrows"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Values -->
+  <section class="scene center" id="s8">
+    <h2 class="big" style="font-size:76px">Small. Yours. Free.</h2>
+    <div class="vals" id="vals">
+      <div class="val"><span class="ic">⌂</span>Self-hosted on your server</div>
+      <div class="val"><span class="ic">⛁</span>Your data stays yours</div>
+      <div class="val"><span class="ic">&lt;/&gt;</span>Plain PHP + MariaDB</div>
+      <div class="val"><span class="ic">★</span>Free and open source</div>
+    </div>
+  </section>
+
+  <!-- 9. CTA -->
+  <section class="scene center" id="s9">
+    <div class="cta-panel">
+      <img class="cta-icon" src="../../public/assets/icon.svg" alt="">
+      <h2>Build your own.</h2>
+      <p>Fork it, change it, make it yours.</p>
+      <div class="repo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 00-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 015.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.27 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0012 .5z"/></svg>github.com/srivastavaakshat/LeanPM</div>
+      <p class="cta-by">LeanPM · built by Akshat Srivastava</p>
+    </div>
+  </section>
+
+  <div id="keycast"></div>
+  <svg id="cursor" viewBox="0 0 24 24"><path d="M3 2l7.5 19 2.6-7.9L21 10.5z" fill="#14213D" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+</div>
+
+<script>
+// ---------- tiny timeline engine: everything is a pure function of t (seconds) ----------
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, x) => a + (b - a) * x;
+const out3 = x => 1 - Math.pow(1 - x, 3);
+const inOut = x => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const back = x => { const c = 1.5; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const typed = (t, start, str, cps = 22) => str.slice(0, Math.max(0, Math.floor((t - start) * cps)));
+const blink = t => (Math.floor(t * 2.2) % 2 === 0 ? 1 : 0);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
+const avatar = (i, c) => `<span class="avatar sm" style="--c:${c}">${i}</span>`;
+
+const SCENES = [ // id, start, end
+  ['s1', 0, 4.6], ['s2', 4.3, 11.2], ['s3', 10.9, 15.4], ['s4', 15.1, 23.7], ['s5', 23.4, 32.3],
+  ['s6', 32.0, 41.4], ['s7', 41.1, 46.4], ['s8', 46.1, 50.6], ['s9', 50.3, 57],
+];
+const DURATION = 57;
+
+function sceneAlpha(t, a, b, fade = .35) {
+  if (t < a || t > b) return 0;
+  return Math.min(prog(t, a, a + fade), b >= DURATION ? 1 : 1 - prog(t, b - fade, b));
+}
+
+// ---------- build static markup ----------
+function card(title, meta = '', extra = '') {
+  return `<article class="tcard ${extra}"><div class="tcard-title">${title}</div>${meta ? `<div class="card-meta">${meta}</div>` : ''}</article>`;
+}
+const chip = (txt, cls = '') => `<span class="chip ${cls}">${txt}</span>`;
+const flag = (txt, color) => `<span class="chip"><svg class="i flag" viewBox="0 0 20 20" style="color:${color};fill:${color}"><path d="M5 17V4m0 0h9l-2 3.5 2 3.5H5"/></svg>${txt}</span>`;
+const HERO = card('Homepage hero: three directions', `<span class="avatars">${avatar('AS', '#14213D')}</span>${chip('Today', 'is-overdue')}${flag('Urgent', '#ef4444')}`);
+function buildBoard(target, withHero = true) {
+  const cols = [
+    ['In Progress', '#0ea5e9', [withHero ? '%HERO%' : null, card('Pricing page redesign', `<span class="avatars">${avatar('PN', '#7c3aed')}</span>${chip('13 Nov')}${flag('High', '#f59e0b')}`)].filter(Boolean)],
+    ['For Review', '#f59e0b', ['%SLOT%', card('Navigation and mega menu', `<span class="avatars">${avatar('RD', '#65a30d')}</span>${chip('11 Nov')}${flag('High', '#f59e0b')}`), card('Case study page template', `<span class="avatars">${avatar('KS', '#0891b2')}</span>${chip('14 Nov')}`)]],
+    ['Approved', '#22c55e', [card('Design system: buttons and inputs', `<span class="avatars">${avatar('AM', '#db2777')}${avatar('AS', '#14213D')}</span>`, 'is-done'), card('Icon set: 48 product icons', `<span class="avatars">${avatar('RD', '#65a30d')}</span>`, 'is-done')]],
+  ];
+  target.innerHTML = cols.map(([name, color, cards], i) => `
+    <section class="column" style="--sc:${color}" data-col="${i}">
+      <header class="column-head"><span class="status-pill">${name}</span><span class="count" data-count="${i}">${cards.filter(c => c !== '%SLOT%').length}</span></header>
+      <div class="cards">${cards.map(c => c === '%HERO%' ? `<div class="slotwrap" id="${target.id}-src">${HERO}</div>` : c === '%SLOT%' ? `<div class="slotwrap" id="${target.id}-dst"></div>` : c).join('')}</div>
+    </section>`).join('');
+}
+buildBoard($('vboard'));
+buildBoard($('vboard2'));
+const ghost = el('div', 'ghost');
+ghost.innerHTML = HERO;
+$('vboard').append(ghost);
+
+// problem scene: bloat features
+const JUNK = ['Goals', 'Automations', 'Whiteboards', 'Sprints', 'Time tracking', 'Dashboards', 'Mind maps', 'Workload', 'Portfolios', 'Forms', 'Chat', 'Docs wiki', 'Clips', 'AI add-on $', '1,000+ integrations', 'Custom roles', 'Guests', '$12 / seat / month'];
+const KEEP = ['Board', 'List', 'Meeting notes', 'Reports'];
+const junkWrap = $('junk');
+const rand = (i, s) => { const x = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453; return x - Math.floor(x); };
+const junkEls = JUNK.map((j, i) => { const e = el('div', 'junk', `<span class="x">✕</span>${j}`); junkWrap.append(e); return { e, x: 40 + (i % 4) * 340 + rand(i, 1) * 120, y: 300 + Math.floor(i / 4) * 140 + rand(i, 2) * 50, r: (rand(i, 3) - .5) * 12, d: i * .1 }; });
+const keepEls = KEEP.map((k, i) => { const e = el('div', 'junk keep', k); junkWrap.append(e); return { e, x: 0, y: 560, d: 2.4 + i * .1 }; });
+function layoutKeep() { // centre the four kept features in a row
+  const gap = 22, widths = keepEls.map(k => k.e.offsetWidth), total = widths.reduce((a, b) => a + b, 0) + gap * (widths.length - 1);
+  let x = (1440 - total) / 2;
+  keepEls.forEach((k, i) => { k.x = x; x += widths[i] + gap; });
+}
+
+// notes
+const LINES = ['Hero: direction B is the favourite. Tighten the crop before Thursday.', 'Ravi’s mega menu is ready for review.', 'Send the three hero options to the client'];
+$('vlines').innerHTML = LINES.map((_, i) => `<p id="ln${i}"></p>`).join('');
+const RAIL = [['Navigation and mega menu', 'For Review · Website Revamp', '#f59e0b'], ['Dark mode token audit', 'Blocked · Mobile App 2.0', '#ef4444']];
+function rail(extra) {
+  $('railtasks').innerHTML = [...(extra ? [['Send the three hero options to the client', 'To do · Website Revamp', '#6366f1', true]] : []), ...RAIL].map(([t, s, c, n]) =>
+    `<div class="rail-task" style="${n ? 'background:rgba(183,243,74,.18)' : ''}"><span class="dot" style="--sc:${c}"></span><span class="grow"><span class="rail-task-title">${t}</span><span class="muted small">${s}</span></span>${avatar(n ? 'AS' : t.startsWith('Nav') ? 'RD' : 'KS', n ? '#14213D' : t.startsWith('Nav') ? '#65a30d' : '#0891b2')}</div>`).join('');
+}
+
+// palette
+const PAL = [
+  ['Homepage hero: three directions', 'Website Revamp · In Progress', '#0ea5e9', '#1'],
+  ['Send the three hero options to the client', 'Inbox · To do', '#8b8f98', '#36'],
+  ['Direction B: product-led', 'Website Revamp · In Progress · subtask', '#0ea5e9', '#14'],
+  ['Direction A: bold type', 'Website Revamp · Approved · subtask', '#22c55e', '#13'],
+];
+function palette(q, on) {
+  const rows = (q ? PAL : PAL.slice(0, 3)).map(([t, s, c, id], i) => `<div class="palette-item${i === on ? ' is-on' : ''}"><span class="pi-dot" style="--sc:${c}"></span><span class="pi-main"><span class="pi-title">${t}</span><span class="pi-sub">${s}</span></span><span class="pi-id">${id}</span>${i === on ? '<span class="pi-enter"><kbd>↵</kbd></span>' : ''}</div>`).join('');
+  $('pallist').innerHTML = `<div class="palette-group"><div class="palette-label">${q ? 'Tasks' : 'Recently updated'}</div>${rows}</div>`;
+}
+
+// reports
+const CSV = [['Design system: buttons and inputs', 'Ayushi, Akshat', '2026-10-28', '19', 'N'], ['Icon set: 48 product icons', 'Ravi', '2026-10-25', '14', 'N'], ['Logo lockups and clear space', 'Akshat', '2026-10-20', '15', 'N'], ['Colour palette: navy and lime', 'Ayushi', '2026-10-18', '11', 'N'], ['Sign in with Google and Apple', 'Ravi', '2026-10-14', '14', 'Y'], ['Tab bar icons', 'Kabir', '2026-10-09', '8', 'N']];
+$('csvrows').innerHTML = CSV.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
+
+// keycast
+const KEYS = { cmd: '⌘', k: 'K', down: '↓', up: '↑', enter: '↵', slash: '/', shiftR: '⇧ →' };
+function caps(list, t0, t, dur = .9) {
+  const kc = $('keycast');
+  const alpha = t >= t0 && t <= t0 + dur ? Math.min(prog(t, t0, t0 + .08), 1 - prog(t, t0 + dur - .2, t0 + dur)) : 0;
+  return { alpha, html: list.map(k => `<span class="cap${k === 'enter' || k === 'k' ? ' lime' : ''}">${KEYS[k] || k}</span>`).join('') };
+}
+
+// ---------- the timeline ----------
+let measured = null;
+function measure() {
+  layoutKeep();
+  // Positions inside the first board, for the drag (taken once, before anything moves).
+  const b = $('vboard').getBoundingClientRect();
+  const src = $('vboard-src').getBoundingClientRect();
+  const dst = $('vboard-dst').getBoundingClientRect();
+  const scale = b.width / $('vboard').offsetWidth;
+  measured = { sx: (src.left - b.left) / scale, sy: (src.top - b.top) / scale, dx: (dst.left - b.left) / scale, dy: (dst.top - b.top) / scale, w: src.width / scale, h: $('vboard-src').offsetHeight };
+  ghost.style.width = measured.w + 'px';
+}
+
+function cursor(t, path, show) {
+  // path: [[t, x, y, press?], …] in stage pixels
+  const c = $('cursor');
+  if (!show) { c.style.opacity = 0; return; }
+  let x = path[0][1], y = path[0][2], press = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const [ta, xa, ya] = path[i], [tb, xb, yb] = path[i + 1];
+    if (t >= ta && t <= tb) { const k = inOut(prog(t, ta, tb)); x = lerp(xa, xb, k); y = lerp(ya, yb, k); }
+    else if (t > tb) { x = xb; y = yb; }
+  }
+  path.forEach(p => { if (p[3] && t >= p[0] && t <= p[0] + .35) press = 1 - prog(t, p[0], p[0] + .35); });
+  c.style.opacity = 1;
+  c.style.transform = `translate(${x}px, ${y}px) scale(${1 - press * .15})`;
+}
+
+function seek(t) {
+  if (!measured) measure();
+  for (const [id, a, b] of SCENES) {
+    const s = $(id), al = sceneAlpha(t, a, b);
+    s.style.opacity = al;
+    s.style.visibility = al > 0 ? 'visible' : 'hidden';
+    s.style.transform = `translateY(${(1 - out3(prog(t, a, a + .6))) * 26}px)`;
+  }
+  let cursorShown = false, cursorPath = null, keycast = { alpha: 0, html: '' };
+
+  // 1. Hook: words land one by one; the counter runs up to 47.
+  const words1 = [...document.querySelectorAll('#hook1 .word')], words2 = [...document.querySelectorAll('#hook2 .word')];
+  words1.forEach((w, i) => { const k = out3(prog(t, .15 + i * .14, .55 + i * .14)); w.style.opacity = k; w.style.transform = `translateY(${(1 - k) * 30}px)`; });
+  $('count').textContent = Math.round(47 * out3(prog(t, .65, 1.6)));
+  words2.forEach((w, i) => { const k = (i === 3 ? back : out3)(prog(t, 2.1 + i * .16, 2.5 + i * .16)); w.style.opacity = clamp(k); w.style.transform = `translateY(${(1 - k) * 30}px) scale(${i === 3 ? .6 + .4 * k : 1})`; });
+
+  // 2. Problem: bloat piles up, falls away, four features stay.
+  const t2 = t - 4.3;
+  $('s2a').style.opacity = out3(prog(t2, .1, .6));
+  $('s2b').style.opacity = out3(prog(t2, .8, 1.3));
+  junkEls.forEach(({ e, x, y, r, d }) => {
+    const inK = back(prog(t2, .2 + d * .6, .7 + d * .6));
+    const fall = inOut(prog(t2, 3.3 + d * .25, 4.1 + d * .25));
+    e.style.opacity = clamp(inK) * (1 - fall);
+    e.style.transform = `translate(${x}px, ${y + fall * 600}px) rotate(${r + fall * 30}deg) scale(${.6 + .4 * clamp(inK)})`;
+  });
+  keepEls.forEach(({ e, x, y, d }, i) => {
+    const k = back(prog(t2, 4.6 + i * .12, 5.1 + i * .12));
+    e.style.opacity = clamp(k);
+    e.style.transform = `translate(${x}px, ${y}px) scale(${.5 + .5 * k})`;
+  });
+  $('s2c').style.opacity = out3(prog(t2, 5.4, 5.9));
+
+  // 3. Turn
+  const t3 = t - 10.9;
+  $('s3a').style.opacity = out3(prog(t3, .1, .5));
+  $('s3a').style.transform = `translateY(${(1 - out3(prog(t3, .1, .6))) * 20}px)`;
+  const lk = back(prog(t3, .7, 1.4));
+  $('s3logo').style.opacity = clamp(lk); $('s3logo').style.transform = `scale(${.7 + .3 * lk})`;
+  $('s3b').style.opacity = out3(prog(t3, 1.6, 2.1));
+  $('s3c').style.opacity = out3(prog(t3, 2.2, 2.7));
+
+  // 4. Board: grab the hero card, lift, carry to For Review, drop with a glow.
+  const t4 = t - 15.1, m = measured, ui4 = $('s4ui');
+  ui4.style.transform = `scale(1.38)`;
+  const scale4 = 1.38;
+  const boardLeft = 720 - (960 * scale4) / 2, boardTop = 330 + 46 * scale4; // below the window bar
+  const gx = s => boardLeft + s * scale4, gy = s => boardTop + s * scale4;
+  const grab = 1.6, lift = 1.95, drop = 3.55, land = 3.95;
+  const srcWrap = $('vboard-src'), dstWrap = $('vboard-dst');
+  const liftK = out3(prog(t4, grab, lift)), carry = inOut(prog(t4, lift, drop)), settle = out3(prog(t4, drop, land));
+  if (t4 < grab) {
+    srcWrap.innerHTML = HERO; srcWrap.style.height = ''; srcWrap.firstElementChild.style.visibility = '';
+    dstWrap.innerHTML = ''; dstWrap.style.height = '0px'; ghost.style.display = 'none';
+  } else if (t4 < land) {
+    srcWrap.innerHTML = HERO; srcWrap.firstElementChild.style.visibility = 'hidden';
+    srcWrap.style.height = lerp(m.h, 0, inOut(prog(t4, lift, lift + .5))) + 'px';
+    srcWrap.style.marginBottom = lerp(0, -10, inOut(prog(t4, lift, lift + .5))) + 'px';
+    const open = inOut(prog(t4, 2.25, 2.75));
+    dstWrap.innerHTML = `<div class="vslot" style="height:${m.h * open}px;opacity:${open}"></div>`;
+    dstWrap.style.height = m.h * open + 'px';
+    ghost.style.display = 'block';
+    const x = lerp(m.sx, m.dx, carry), y = lerp(m.sy, m.dy, carry) - 10 * liftK * (1 - settle) + Math.sin(carry * Math.PI) * -40;
+    const tilt = Math.sin(carry * Math.PI) * 5 * (1 - settle) + liftK * 1.5 * (1 - settle);
+    ghost.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg) scale(${1 + .04 * liftK * (1 - settle)})`;
+    const card = ghost.firstElementChild;
+    card.style.boxShadow = `0 0 0 1px rgba(20,33,61,.06), 0 ${28 * liftK * (1 - settle)}px ${50 * liftK}px -14px rgba(20,33,61,${.45 * liftK * (1 - settle)}), 0 0 0 ${3 * liftK * (1 - settle)}px rgba(183,243,74,.6)`;
+    document.querySelector('#vboard [data-col="1"]').classList.toggle('is-target', t4 > 2.2 && t4 < drop + .1);
+  } else {
+    srcWrap.style.height = '0px'; srcWrap.style.marginBottom = '-10px'; srcWrap.innerHTML = '';
+    ghost.style.display = 'none';
+    dstWrap.style.height = ''; dstWrap.innerHTML = HERO;
+    const g = 1 - prog(t4, land, land + 1);
+    dstWrap.firstElementChild.classList.add('glow'); dstWrap.firstElementChild.style.setProperty('--g', g);
+    document.querySelector('#vboard [data-col="1"]').classList.remove('is-target');
+  }
+  document.querySelector('#vboard [data-count="0"]').textContent = t4 >= land ? 1 : 2;
+  document.querySelector('#vboard [data-count="1"]').textContent = t4 >= land ? 3 : 2;
+  if (t4 > .6 && t4 < 6.8) {
+    cursorShown = true;
+    const hx = gx(m.sx + 150), hy = gy(m.sy + 30), dxp = gx(m.dx + 150), dyp = gy(m.dy + 30);
+    cursorPath = [[15.1 + .6, 1250, 1000], [15.1 + grab, hx, hy, true], [15.1 + lift, hx, hy - 10], [15.1 + drop, dxp, dyp - 8, true], [15.1 + 5.2, dxp + 200, dyp + 300]];
+  }
+
+  // 5. Notes: type lines; "/" opens the menu; Enter turns the last line into a live task chip.
+  const t5 = t - 23.4, ui5 = $('s5ui');
+  ui5.style.transform = 'scale(1.3)';
+  const T = [[.7, LINES[0]], [3.0, LINES[1]], [4.6, LINES[2]]];
+  const slashAt = 4.6 + LINES[2].length / 22 + .25, enterAt = slashAt + 1.1;
+  T.forEach(([start, str], i) => {
+    const p = $('ln' + i);
+    if (i === 2 && t5 >= enterAt) {
+      const k = back(prog(t5, enterAt, enterAt + .45));
+      p.innerHTML = `<span class="task-ref" style="transform:scale(${.85 + .15 * k});display:inline-flex;box-shadow:0 0 0 ${6 * (1 - prog(t5, enterAt, enterAt + 1.2))}px rgba(183,243,74,.6)"><span class="tr-check"></span><span class="tr-title">${str}</span><span class="tr-stage" style="--sc:#6366f1">To do</span><span class="tr-project">Website Revamp</span><span class="avatars">${avatar('AS', '#14213D')}</span></span>`;
+      return;
+    }
+    const txt = typed(t5, start, str) + (i === 2 && t5 >= slashAt ? ' /' : '');
+    const active = t5 >= start && (i === 2 ? t5 < enterAt : t5 < T[i + 1][0]);
+    p.innerHTML = txt.replace(/&/g, '&amp;') + (active && blink(t5) ? '<span class="vcaret"></span>' : '');
+  });
+  const sl = $('vslash'), slk = out3(prog(t5, slashAt, slashAt + .2)) * (1 - prog(t5, enterAt, enterAt + .15));
+  sl.style.opacity = slk; sl.style.transform = `translateY(${(1 - slk) * 6}px)`;
+  sl.style.left = '60px'; sl.style.top = '232px';
+  rail(t5 >= enterAt + .3);
+  $('railcount').textContent = t5 >= enterAt + .3 ? '3 open' : '2 open';
+  if (t >= 23.4 + slashAt - .05 && t <= 23.4 + slashAt + .8) keycast = caps(['slash'], 23.4 + slashAt - .05, t, .85);
+  if (t >= 23.4 + enterAt - .05 && t <= 23.4 + enterAt + .85) keycast = caps(['enter'], 23.4 + enterAt - .05, t, .9);
+
+  // 6. Keyboard: ⌘K → "hero" → ↓ ↑ → ↵ → task opens, cursor in the comment box → type → ⌘↵ → posted.
+  const t6 = t - 32.0;
+  $('s6bg').style.transform = 'scale(1.38)';
+  const kAt = .9, typeAt = 1.6, downAt = 2.6, upAt = 3.1, openAt = 3.7, cTypeAt = 4.5, comment = 'Direction B is ready for review.', sendAt = cTypeAt + comment.length / 24 + .4;
+  const dim = out3(prog(t6, kAt, kAt + .3));
+  $('vdim').style.opacity = dim;
+  const palK = back(prog(t6, kAt, kAt + .35)) * (1 - out3(prog(t6, openAt, openAt + .25)));
+  $('vpal').style.opacity = clamp(palK); $('vpal').style.transform = `scale(${1.5 * (.94 + .06 * clamp(palK))})`;
+  const q = typed(t6, typeAt, 'hero', 9);
+  $('palq').innerHTML = (q || '<span style="color:var(--faint)">Search tasks, or jump to a page…</span>') + (t6 < openAt && blink(t6) ? '<span class="vcaret" style="height:22px"></span>' : '');
+  palette(q.length >= 4 ? 'hero' : '', t6 >= downAt && t6 < upAt ? 1 : 0);
+  const taskK = back(prog(t6, openAt, openAt + .4));
+  $('vtask').style.opacity = clamp(taskK); $('vtask').style.transform = `scale(${1.42 * (.95 + .05 * clamp(taskK))}) translateY(${(1 - clamp(taskK)) * 20}px)`;
+  const ctext = typed(t6, cTypeAt, comment, 24);
+  const posted = t6 >= sendAt;
+  $('vta').innerHTML = posted ? `<span class="ph">Write a comment… ⌘+Enter to send</span>${blink(t6) ? '<span class="vcaret"></span>' : ''}` : (ctext || '') + (t6 >= openAt + .3 && blink(t6) ? '<span class="vcaret"></span>' : '') + (!ctext ? '<span class="ph">Write a comment… ⌘+Enter to send</span>' : '');
+  const feed = $('vfeed');
+  if (posted && feed.children.length === 1) feed.insertAdjacentHTML('beforeend', `<div class="comment" id="newc"><div class="comment-head"><span class="avatar sm" style="--c:#14213D">AS</span><strong>Akshat Srivastava</strong><time>just now</time></div><div class="comment-body">${comment}</div></div>`);
+  if (!posted && feed.children.length > 1) $('newc').remove();
+  if (posted) { const k = out3(prog(t6, sendAt, sendAt + .4)); $('newc').style.opacity = k; $('newc').style.transform = `translateY(${(1 - k) * 14}px)`; $('newc').style.boxShadow = `0 0 0 ${5 * (1 - prog(t6, sendAt, sendAt + 1.2))}px rgba(183,243,74,.6)`; }
+  const presses = [[kAt - .1, ['cmd', 'k']], [downAt - .05, ['down']], [upAt - .05, ['up']], [openAt - .1, ['enter']], [sendAt - .1, ['cmd', 'enter']]];
+  presses.forEach(([at, keys]) => { if (t6 >= at && t6 <= at + .8) keycast = caps(keys, 32.0 + at, t, .8); });
+
+  // 7. Reports: click download, rows stream in.
+  const t7 = t - 41.1;
+  $('s7ui').style.transform = 'scale(1.22)';
+  const clickAt = 1.1;
+  const pk = 1 - prog(t7, clickAt, clickAt + .3);
+  $('vbtn').style.transform = `scale(${t7 >= clickAt && t7 < clickAt + .3 ? .94 + .06 * (1 - pk) : 1})`;
+  [...$('csvrows').children].forEach((r, i) => { const k = out3(prog(t7, clickAt + .35 + i * .16, clickAt + .7 + i * .16)); r.style.opacity = k; r.style.transform = `translateX(${(1 - k) * 24}px)`; });
+  if (t7 > .2 && t7 < 3) { cursorShown = true; cursorPath = [[41.1 + .2, 1100, 1000], [41.1 + clickAt, 400, 800, true], [41.1 + 3, 460, 860]]; }
+
+  // 8. Values
+  const t8 = t - 46.1;
+  [...$('vals').children].forEach((v, i) => { const k = back(prog(t8, .4 + i * .22, .85 + i * .22)); v.style.opacity = clamp(k); v.style.transform = `translateY(${(1 - k) * 30}px) scale(${.92 + .08 * k})`; });
+
+  // 9. CTA
+  const t9 = t - 50.3;
+  const ck = back(prog(t9, .1, .8));
+  document.querySelector('.cta-panel').style.transform = `scale(${.92 + .08 * clamp(ck)})`;
+  document.querySelector('.repo').style.transform = `scale(${1 + .025 * Math.sin(Math.max(0, t9 - 1.4) * 3) * (t9 > 1.4 ? 1 : 0)})`;
+
+  // shared: cursor + keycast
+  if (cursorShown && cursorPath) cursor(t, cursorPath, true); else cursor(t, [[0, 0, 0]], false);
+  $('keycast').innerHTML = keycast.html;
+  [...$('keycast').children].forEach((c, i) => { c.style.opacity = keycast.alpha; c.style.transform = `translateY(${(1 - keycast.alpha) * 16}px) scale(${.9 + .1 * keycast.alpha})`; });
+}
+window.seek = seek;
+window.DURATION = DURATION;
+window.ready = document.fonts.ready.then(() => { measure(); seek(0); return true; });
+if (location.hash.startsWith('#t=')) window.ready.then(() => seek(parseFloat(location.hash.slice(3))));
+</script>
+</body>
+</html>

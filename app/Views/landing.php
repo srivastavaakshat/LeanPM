@@ -25,6 +25,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
     <nav class="nav-links" aria-label="Sections">
       <a href="#board">Board &amp; list</a>
       <a href="#notes">Meeting notes</a>
+      <a href="#keyboard">Keyboard</a>
       <a href="#reports">Reports</a>
       <a href="#build">Build your own</a>
     </nav>
@@ -40,7 +41,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
     <div class="wrap hero-in">
       <p class="eyebrow"><span class="dot"></span> A personal project by Akshat Srivastava</p>
       <h1>Project management,<br><span class="hl">without the weight.</span></h1>
-      <p class="lede">LeanPM is the tool I built for my own design team: a Kanban board and a list, meeting notes that turn into tasks, and a CSV export for the end-of-month report. Small, self-hosted and open source.</p>
+      <p class="lede">LeanPM is the tool I built for my own design team: a Kanban board and a list, meeting notes that turn into tasks, a CSV export for the end-of-month report, and you can run all of it from the keyboard. Small, self-hosted and open source.</p>
       <div class="hero-cta">
         <a class="btn btn-dark btn-lg" href="<?= e($login) ?>">Sign in to LeanPM</a>
         <a class="btn btn-line btn-lg" href="<?= e($repo) ?>" rel="noopener">Build your own on GitHub <span aria-hidden="true">→</span></a>
@@ -175,7 +176,35 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
     </div>
   </section>
 
-  <section class="feature" id="reports">
+  <section class="feature" id="keyboard">
+    <div class="wrap feature-in reveal">
+      <div class="feature-text">
+        <p class="kicker">Keyboard first</p>
+        <h2>Your hands never leave the keyboard.</h2>
+        <p>Press <kbd>⌘</kbd><kbd>K</kbd> anywhere to find any task or jump to any page. Open a task and the cursor is already in the comment box, so an update takes seconds.</p>
+        <ul class="ticks">
+          <li>Search every project you can see, then <kbd>↑</kbd><kbd>↓</kbd> and <kbd>↵</kbd> to open</li>
+          <li>Arrow keys move around the board, <kbd>⇧</kbd><kbd>→</kbd> moves a card to the next stage</li>
+          <li>Type a comment and send it with <kbd>⌘</kbd><kbd>↵</kbd>; <kbd>?</kbd> shows every shortcut</li>
+        </ul>
+      </div>
+      <div class="window m-palette-wrap" aria-label="The command palette">
+        <div class="win-bar"><i></i><i></i><i></i><span>Search · ⌘K</span></div>
+        <div class="m-palette">
+          <div class="m-pal-search"><span class="m-pal-icon" aria-hidden="true">⌕</span>hero<span class="caret"></span><kbd>esc</kbd></div>
+          <p class="m-pal-label">Tasks</p>
+          <div class="m-pal-item is-on"><span class="m-pal-dot" style="--c:#0ea5e9"></span><span class="m-pal-main"><strong>Homepage hero: three directions</strong><span>Website Revamp · In Progress</span></span><kbd>↵</kbd></div>
+          <div class="m-pal-item"><span class="m-pal-dot" style="--c:#8b8f98"></span><span class="m-pal-main"><strong>Send the three hero options to the client</strong><span>Inbox · To do</span></span><span class="m-pal-id">#36</span></div>
+          <div class="m-pal-item"><span class="m-pal-dot" style="--c:#22c55e"></span><span class="m-pal-main"><strong>Direction A: bold type</strong><span>Website Revamp · Approved · subtask</span></span><span class="m-pal-id">#13</span></div>
+          <p class="m-pal-label">Go to</p>
+          <div class="m-pal-item"><span class="m-pal-go">→</span><span class="m-pal-main"><strong>Meeting notes</strong></span><span class="m-pal-id">G N</span></div>
+          <div class="m-pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>esc</kbd> close</span><span class="m-pal-right"><kbd>?</kbd> all shortcuts</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature feature-alt" id="reports">
     <div class="wrap feature-in reveal">
       <div class="feature-text">
         <p class="kicker">Reports</p>
