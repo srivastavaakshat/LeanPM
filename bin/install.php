@@ -64,7 +64,7 @@ if (!$owner) {
     $password = random_password(16);
     $ownerId = DB::insert('users', [
         'name' => trim((string) ($opts['owner-name'] ?? '')) ?: 'Owner', 'email' => $email,
-        'password_hash' => password_hash($password, PASSWORD_DEFAULT), 'color' => '#5b5bd6',
+        'password_hash' => password_hash($password, PASSWORD_DEFAULT), 'color' => '#14213D',
         'is_owner' => 1, 'must_change_password' => 0, 'created_at' => now(),
     ]);
     $owner = DB::one('SELECT * FROM users WHERE id = ?', [$ownerId]);

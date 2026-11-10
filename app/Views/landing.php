@@ -54,9 +54,9 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
           <?php
           $cols = [
             ['To do', '#94a3b8', [['Moodboard for the spring campaign', 'NK', '#e0663a', '18 Nov', 'High', '2/4'], ['Icon set: sports categories', 'RV', '#2f9e78', '21 Nov', null, null]]],
-            ['In progress', '#5b8def', [['Homepage hero, three directions', 'AS', '#5b5bd6', 'Today', 'Urgent', '1/3'], ['App store screenshots', 'PM', '#c2410c', '20 Nov', null, null]]],
+            ['In progress', '#5b8def', [['Homepage hero, three directions', 'AS', '#14213D', 'Today', 'Urgent', '1/3'], ['App store screenshots', 'PM', '#c2410c', '20 Nov', null, null]]],
             ['In review', '#e8a33d', [['Newsletter template v2', 'RV', '#2f9e78', '15 Nov', 'High', null]]],
-            ['Done', '#2f9e78', [['Brand colours, final', 'AS', '#5b5bd6', null, null, '4/4'], ['Social banner sizes', 'NK', '#e0663a', null, null, null]]],
+            ['Done', '#2f9e78', [['Brand colours, final', 'AS', '#14213D', null, null, '4/4'], ['Social banner sizes', 'NK', '#e0663a', null, null, null]]],
           ];
           foreach ($cols as [$name, $color, $cards]): ?>
           <div class="m-col">
@@ -119,12 +119,12 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
         <table class="m-list">
           <thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Due</th><th>Stage</th></tr></thead>
           <tbody>
-            <tr><td>Homepage hero, three directions</td><td><?= $av('AS', '#5b5bd6') ?></td><td><span class="m-flag m-flag-urgent">Urgent</span></td><td class="is-due">Today</td><td><span class="m-pill" style="--c:#5b8def">In progress</span></td></tr>
+            <tr><td>Homepage hero, three directions</td><td><?= $av('AS', '#14213D') ?></td><td><span class="m-flag m-flag-urgent">Urgent</span></td><td class="is-due">Today</td><td><span class="m-pill" style="--c:#5b8def">In progress</span></td></tr>
             <tr><td>Newsletter template v2</td><td><?= $av('RV', '#2f9e78') ?></td><td><span class="m-flag m-flag-high">High</span></td><td>15 Nov</td><td><span class="m-pill" style="--c:#e8a33d">In review</span></td></tr>
             <tr><td>Moodboard for the spring campaign</td><td><?= $av('NK', '#e0663a') ?></td><td><span class="m-flag m-flag-high">High</span></td><td>18 Nov</td><td><span class="m-pill" style="--c:#94a3b8">To do</span></td></tr>
             <tr><td>App store screenshots</td><td><?= $av('PM', '#c2410c') ?></td><td><span class="muted">—</span></td><td>20 Nov</td><td><span class="m-pill" style="--c:#5b8def">In progress</span></td></tr>
             <tr><td>Icon set: sports categories</td><td><?= $av('RV', '#2f9e78') ?></td><td><span class="muted">—</span></td><td>21 Nov</td><td><span class="m-pill" style="--c:#94a3b8">To do</span></td></tr>
-            <tr class="is-done"><td>Brand colours, final</td><td><?= $av('AS', '#5b5bd6') ?></td><td><span class="muted">—</span></td><td>8 Nov</td><td><span class="m-pill" style="--c:#2f9e78">Done</span></td></tr>
+            <tr class="is-done"><td>Brand colours, final</td><td><?= $av('AS', '#14213D') ?></td><td><span class="muted">—</span></td><td>8 Nov</td><td><span class="m-pill" style="--c:#2f9e78">Done</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -150,7 +150,7 @@ $av = fn (string $i, string $c) => '<span class="m-av" style="--c:' . $c . '">' 
             <p class="m-date">Monday, 10 November</p>
             <ul>
               <li>Hero directions look good; go with option B for the review</li>
-              <li><span class="m-task"><span class="m-check"></span>Share hero option B with the client <span class="m-pill" style="--c:#5b8def">In progress</span><?= $av('AS', '#5b5bd6') ?></span></li>
+              <li><span class="m-task"><span class="m-check"></span>Share hero option B with the client <span class="m-pill" style="--c:#5b8def">In progress</span><?= $av('AS', '#14213D') ?></span></li>
               <li>Newsletter: one more pass on the footer</li>
               <li class="m-typing">Get final copy for the app store screenshots /<span class="caret"></span>
                 <div class="m-slash">

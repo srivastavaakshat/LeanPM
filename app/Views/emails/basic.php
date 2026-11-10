@@ -6,7 +6,7 @@
   <p style="margin:0 0 18px;font-weight:700;font-size:15px"><span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;background:#14213D;color:#B7F34A;font-size:12px;margin-right:6px">L</span>LeanPM</p>
   <p style="margin:0 0 12px">Hi <?= e($name) ?>,</p>
   <?php foreach ($lines as $line): ?><p style="margin:0 0 12px"><?= $line ?></p><?php endforeach; ?>
-  <p style="margin:20px 0 6px"><a href="<?= e($url) ?>" style="display:inline-block;padding:10px 18px;background:#5b5bd6;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600"><?= e($button) ?></a></p>
+  <p style="margin:20px 0 6px"><a href="<?= e($url) ?>" style="display:inline-block;padding:10px 18px;background:#14213D;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600"><?= e($button) ?></a></p>
   <p style="margin:12px 0 0;font-size:12.5px;color:#6b6f7b">Or paste this into your browser: <?= e($url) ?></p>
   <?php if ($note !== ''): ?><p style="margin:14px 0 0;font-size:13px;color:#6b6f7b"><?= $note ?></p><?php endif; ?>
 </td></tr>
