@@ -495,7 +495,7 @@
 
   function addTaskButton(status, parentId = null) {
     const wrap = h('div', { class: 'add-task' });
-    const btn = h('button', { type: 'button', class: 'add-btn' }, svg(ICON.plus), 'Add task');
+    const btn = h('button', { type: 'button', class: 'add-btn', title: 'New task (N)' }, svg(ICON.plus), 'Add task', parentId ? null : h('kbd', { class: 'add-kbd' }, 'N'));
     btn.addEventListener('click', () => {
       const input = h('input', { type: 'text', class: 'add-input', placeholder: 'Task name, then Enter', maxlength: 255 });
       wrap.replaceChildren(input);
@@ -748,6 +748,8 @@
       state.detail = data.task;
       upsert(data.task);
       renderDrawer();
+      // The cursor waits in the comment box, so you can type an update straight away.
+      drawer.querySelector('.comment-box textarea')?.focus({ preventScroll: true });
     } catch {
       closeTask();
     }
@@ -761,6 +763,7 @@
   }
   function closeTask(push = true) {
     saveDescriptionNow();
+    const was = state.openId;
     state.openId = null;
     state.detail = null;
     drawer.hidden = true;
@@ -771,12 +774,97 @@
       if (u.searchParams.has('task')) { u.searchParams.delete('task'); history.pushState({}, '', u); }
     }
     render();
+    if (was) focusCard(was); // keyboard users carry on from the same card
   }
   backdrop.addEventListener('click', () => closeTask());
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && openPicker) { closePicker(); return; }
     if (e.key === 'Escape' && state.openId && !e.target.closest('input, textarea, [contenteditable]')) closeTask();
   });
+  // ---------- keyboard ----------
+  // Arrows move between cards, Enter opens, Shift+←/→ moves a card to the previous/next stage,
+  // N adds a task, B/L/F switch views. The palette (⌘K) opens tasks here without reloading.
+  const typingIn = el => window.LPMKeys?.typing(el) ?? !!el?.closest?.('input, textarea, select, [contenteditable]');
+  function focusCard(id) {
+    const el = document.querySelector(`.tcard[data-id="${id}"]`);
+    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  }
+  function cardGrid() {
+    return [...document.querySelectorAll('.board .cards')].map(c => [...c.querySelectorAll('.tcard')]);
+  }
+  function moveFocus(card, key) {
+    const grid = cardGrid();
+    const col = grid.findIndex(c => c.includes(card));
+    if (col < 0) return;
+    const row = grid[col].indexOf(card);
+    if (key === 'ArrowUp' && row > 0) grid[col][row - 1].focus();
+    else if (key === 'ArrowDown' && row < grid[col].length - 1) grid[col][row + 1].focus();
+    else if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      const step = key === 'ArrowLeft' ? -1 : 1;
+      for (let c = col + step; c >= 0 && c < grid.length; c += step) {
+        if (grid[c].length) { grid[c][Math.min(row, grid[c].length - 1)].focus(); break; }
+      }
+    }
+    document.activeElement?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  function shiftStage(t, dir) {
+    if (!t?.can.move) { toast('You can’t move this task.', 'error'); return; }
+    const list = state.statuses;
+    const to = list[list.findIndex(s => s.id === t.status_id) + dir];
+    if (!to) return;
+    const order = [...state.tasks.filter(x => x.status_id === to.id && x.id !== t.id).sort((a, b) => a.position - b.position || a.id - b.id).map(x => x.id), t.id];
+    const prev = { status_id: t.status_id, completed_at: t.completed_at, position: t.position };
+    t.status_id = to.id;
+    order.forEach((tid, i) => { const x = taskById(tid); if (x) x.position = i; });
+    state.landed = t.id;
+    setTimeout(() => { if (state.landed === t.id) { state.landed = null; document.querySelector(`.tcard[data-id="${t.id}"]`)?.classList.remove('is-landed'); } }, 900);
+    render();
+    focusCard(t.id);
+    api('POST', `/api/tasks/${t.id}/move`, { status_id: to.id, order }).then(data => { upsert(data.task); render(); focusCard(t.id); })
+      .catch(() => { Object.assign(t, prev); reloadTasks(); });
+  }
+  function newTask() {
+    if (!boot.can.create) return;
+    if (state.view === 'files') { state.view = 'board'; store.set(KEY + ':view', 'board'); render(); }
+    document.querySelector('.view .add-btn, .view .add-row-btn')?.click();
+  }
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || state.openId || openPicker || drag || typingIn(e.target) || document.querySelector('dialog[open], .palette')) return;
+    const card = e.target.closest?.('.tcard');
+    if (card && e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) shiftStage(taskById(+card.dataset.id), e.key === 'ArrowLeft' ? -1 : 1);
+      else moveFocus(card, e.key);
+      return;
+    }
+    if (e.key.startsWith('Arrow') && !card && state.view === 'board' && !e.target.closest('button, a')) {
+      const first = document.querySelector('.board .tcard');
+      if (first) { e.preventDefault(); first.focus(); }
+      return;
+    }
+    const k = e.key.toLowerCase();
+    if (k === 'n' && !e.shiftKey) { e.preventDefault(); newTask(); }
+    else if (['b', 'l', 'f'].includes(k) && !e.shiftKey) {
+      e.preventDefault();
+      state.view = { b: 'board', l: 'list', f: 'files' }[k];
+      store.set(KEY + ':view', state.view);
+      render();
+    }
+  });
+  addEventListener('lpm:new-task', newTask);
+  addEventListener('lpm:open-task', e => {
+    if (e.detail.projectId !== boot.project.id) return;
+    e.preventDefault();
+    openTask(e.detail.id);
+  });
+  // While a card has keyboard focus, a hint shows which keys work.
+  document.addEventListener('focusin', e => {
+    const card = e.target.closest?.('.tcard');
+    if (!card || !window.LPMKeys || !card.matches(':focus-visible')) return;
+    window.LPMKeys.showHint([[['←', '→', '↑', '↓'], 'move'], [['↵'], 'open'], ...(card.classList.contains('can-move') ? [[['⇧', '←', '→'], 'change stage']] : []), [['N'], 'new task']]);
+  });
+  document.addEventListener('focusout', e => { if (e.target.closest?.('.tcard')) window.LPMKeys?.hideHint(150); });
+
   addEventListener('popstate', () => {
     const id = +new URL(location.href).searchParams.get('task');
     if (id) openTask(id, false); else if (state.openId) closeTask(false);
@@ -812,6 +900,7 @@
     const st = statusById(t.status_id);
     const keepScroll = drawer.querySelector('.feed')?.scrollTop;
     const draft = drawer.querySelector('.comment-box textarea')?.value;
+    const commentFocused = !!document.activeElement?.matches?.('.comment-box textarea');
 
     // header
     const head = h('header', { class: 'drawer-head' },
@@ -966,6 +1055,7 @@
 
     drawer.replaceChildren(head, h('div', { class: 'drawer-body' }, left, right));
     if (keepScroll !== undefined) feed.scrollTop = keepScroll; else feed.scrollTop = feed.scrollHeight;
+    if (commentFocused) { const ta = drawer.querySelector('.comment-box textarea'); ta?.focus({ preventScroll: true }); ta?.setSelectionRange(ta.value.length, ta.value.length); }
   }
 
   /** Editor for one custom field in the task panel. Saves on change. */
@@ -1056,7 +1146,8 @@
   }
 
   function commentBox(t, draft) {
-    const ta = h('textarea', { rows: 2, placeholder: 'Write a comment… Type @ to mention someone. Ctrl+Enter sends.', maxlength: 10000 }, draft || '');
+    const mod = window.LPMKeys?.mod || 'Ctrl';
+    const ta = h('textarea', { rows: 2, placeholder: `Write a comment… @ to mention · ${mod}+Enter to send · Esc to close`, maxlength: 10000 }, draft || '');
     mentionTextarea(ta);
     const fileInput = h('input', { type: 'file', multiple: true, hidden: true });
     const chosen = h('div', { class: 'chosen-files' });
@@ -1084,8 +1175,12 @@
         feed.scrollTop = feed.scrollHeight;
       } finally { sendBtn.disabled = false; }
     };
-    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
-    const sendBtn = h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: send }, 'Comment');
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
+      // Esc leaves the comment box; with nothing typed it closes the task in one go.
+      else if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); if (ta.value.trim()) ta.blur(); else closeTask(); }
+    });
+    const sendBtn = h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: send, title: `${mod}+Enter` }, 'Comment', h('kbd', { class: 'btn-kbd' }, `${mod === '⌘' ? '⌘' : 'Ctrl'}↵`));
     return h('div', { class: 'comment-box' }, ta, chosen,
       h('div', { class: 'row-between' },
         boot.can.upload ? h('button', { type: 'button', class: 'icon-btn', title: 'Attach files', onclick: () => fileInput.click() }, svg(ICON.clip)) : h('span'),

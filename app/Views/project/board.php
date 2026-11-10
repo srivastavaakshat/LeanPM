@@ -23,13 +23,13 @@ $base = '/o/' . $org['slug'] . '/p/' . $project['id'];
       <a class="btn btn-sm" href="<?= e(url($base . '/settings')) ?>">Edit stages</a>
     <?php endif; ?>
     <div class="view-toggle" role="tablist">
-      <button type="button" data-view="board" role="tab">
+      <button type="button" data-view="board" role="tab" title="Board (B)" aria-keyshortcuts="B">
         <svg class="i" viewBox="0 0 20 20"><rect x="3" y="4" width="4" height="12" rx="1"/><rect x="8" y="4" width="4" height="8" rx="1"/><rect x="13" y="4" width="4" height="10" rx="1"/></svg> Board
       </button>
-      <button type="button" data-view="list" role="tab">
+      <button type="button" data-view="list" role="tab" title="List (L)" aria-keyshortcuts="L">
         <svg class="i" viewBox="0 0 20 20"><path d="M7 5h10M7 10h10M7 15h10M3.5 5h.01M3.5 10h.01M3.5 15h.01"/></svg> List
       </button>
-      <button type="button" data-view="files" role="tab">
+      <button type="button" data-view="files" role="tab" title="Files (F)" aria-keyshortcuts="F">
         <svg class="i" viewBox="0 0 20 20"><path d="M6 3h5l4 4v9a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M11 3v4h4"/></svg> Files
       </button>
     </div>

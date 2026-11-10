@@ -274,6 +274,14 @@ A permission change takes effect on the member's next page load. The member's pr
   - Custom field values carry over to fields with the same name and type.
   - It's recorded in the task's history. A subtask moved on its own becomes a normal task.
 
+### 5.14 Keyboard
+Everything can be done from the keyboard, and the app shows which keys work as you go.
+- **⌘K / Ctrl+K** (or `/`) opens a palette from any page: search tasks across every project you can open (recent ones show before you type), jump to any page or project, or run an action. ↑↓ to move, Enter to open. A task opens in place on its board or in the quick view, otherwise on its board.
+- **When a task opens, the cursor is in the comment box.** ⌘/Ctrl+Enter sends. Esc leaves the box; with nothing typed it closes the task and focus returns to its card.
+- **Board:** arrows move between cards, Enter opens, Shift+←/→ moves the card to the previous/next stage, N adds a task, B / L / F switch views. A hint pill at the bottom shows these while a card has focus.
+- **Anywhere:** G then A / N / M goes to All tasks / Meeting notes / Members; `[` collapses the sidebar; `?` shows every shortcut.
+- **All tasks** has a List and a Board view (B / L). On the board each project is a column, Inbox first; dragging a card (or Shift+←/→) moves the task to that project.
+
 ## 6. Data model (draft)
 
 ```
@@ -338,3 +346,4 @@ email when you're assigned a task · project-level files and links (not attached
 - **15 Oct 2026:** @mentions with email moved into v1 (comments and descriptions). Assignment emails stay in a later version.
 - **10 Nov 2026:** Owners are LeanPM-wide admins, not org members. Creating an organization no longer adds the owner; they can name its admin instead. More owners can be added. New tasks are assigned to their creator by default.
 - **10 Nov 2026:** A public landing page at `/` for visitors (why it exists, the main features, a link to build your own from GitHub). Signed-in people still go straight to their workspace. Logo and icon from Akshat's brand files (navy #14213D, lime #B7F34A).
+- **10 Nov 2026:** Keyboard-first: ⌘K palette with task search, the comment box focused when a task opens, arrow and Shift+arrow control on boards, a `?` shortcuts sheet and on-screen key hints. All tasks gets a Board view (columns are projects). Board columns look recessed so cards stand out.

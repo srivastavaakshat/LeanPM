@@ -16,6 +16,9 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="csrf" content="<?= e(csrf_token()) ?>">
+<meta name="lpm-base" content="<?= e(url('/')) ?>">
+<?php if ($org): ?><meta name="lpm-org" content="<?= e($org['slug']) ?>"><?php endif; ?>
+<?php if (Auth::isOwner()): ?><meta name="lpm-owner" content="1"><?php endif; ?>
 <title><?= e(($title ?? '') !== '' ? $title . ' · LeanPM' : 'LeanPM') ?></title>
 <link rel="icon" href="<?= e(asset('favicon.svg')) ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?= e(asset('app.css')) ?>">
@@ -51,14 +54,19 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
 
     <?php if ($org): $base = '/o/' . $org['slug']; ?>
     <nav class="side-nav">
+      <button type="button" class="side-link side-search" data-palette data-tip="Search and jump (⌘K)" aria-label="Search" aria-keyshortcuts="Meta+K Control+K">
+        <svg class="i" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17"/></svg>
+        <span class="label">Search</span>
+        <kbd class="label kbd-mod" data-kbd="mod+k">⌘K</kbd>
+      </button>
       <?php $inboxOpen = (int) \App\Core\Database::value("SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.project_id = ? AND t.deleted_at IS NULL AND t.parent_id IS NULL AND s.type <> 'done'", [Access::inboxId()]); ?>
-      <a href="<?= e(url($base . '/tasks')) ?>" class="side-link<?= $active($base . '/tasks') ?>" data-tip="All tasks<?= $inboxOpen ? " · {$inboxOpen} in Inbox" : '' ?>" aria-label="All tasks">
+      <a href="<?= e(url($base . '/tasks')) ?>" class="side-link<?= $active($base . '/tasks') ?>" data-tip="All tasks<?= $inboxOpen ? " · {$inboxOpen} in Inbox" : '' ?> (G A)" aria-label="All tasks">
         <svg class="i" viewBox="0 0 20 20"><rect x="3.5" y="3.5" width="13" height="13" rx="3"/><path d="M7 10.2l2.2 2.2L13.5 8"/></svg>
         <span class="label">All tasks</span>
         <?php if ($inboxOpen): ?><span class="side-badge" title="<?= $inboxOpen ?> in the Inbox, not in a project yet"><?= $inboxOpen ?></span><?php endif; ?>
       </a>
       <?php if (Access::can('meeting_notes')): ?>
-      <a href="<?= e(url($base . '/notes')) ?>" class="side-link<?= $active($base . '/notes') ?>" data-tip="Meeting notes" aria-label="Meeting notes">
+      <a href="<?= e(url($base . '/notes')) ?>" class="side-link<?= $active($base . '/notes') ?>" data-tip="Meeting notes (G N)" aria-label="Meeting notes">
         <svg class="i" viewBox="0 0 20 20"><path d="M6 3h5l4 4v9a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M11 3v4h4M8 11h5M8 14h3"/></svg>
         <span class="label">Meeting notes</span>
       </a>
@@ -78,7 +86,7 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
       <?php if (!$projects): ?><p class="side-empty label">No projects yet.</p><?php endif; ?>
 
       <div class="side-label"><span class="label">Workspace</span></div>
-      <a href="<?= e(url($base . '/members')) ?>" class="side-link<?= $active($base . '/members') ?>" data-tip="Members" aria-label="Members">
+      <a href="<?= e(url($base . '/members')) ?>" class="side-link<?= $active($base . '/members') ?>" data-tip="Members (G M)" aria-label="Members">
         <svg class="i" viewBox="0 0 20 20"><circle cx="8" cy="7" r="3"/><path d="M2.5 16c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><path d="M13 4.5a2.5 2.5 0 010 5M15 11.5c1.3.6 2.1 1.8 2.5 3.5"/></svg>
         <span class="label">Members</span>
       </a>
@@ -151,5 +159,6 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
 </dialog>
 <?php endif; ?>
 <script src="<?= e(asset('ui.js')) ?>"></script>
+<script src="<?= e(asset('palette.js')) ?>"></script>
 </body>
 </html>

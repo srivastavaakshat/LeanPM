@@ -138,6 +138,8 @@
       const d = await api('GET', `/api/tasks/${taskId}`);
       current = d.task;
       draw(true);
+      // The cursor waits in the update box, so you can type straight away.
+      panel?.querySelector('.peek-comment textarea')?.focus({ preventScroll: true });
     } catch {
       close();
     }
@@ -195,6 +197,7 @@
     const body = panel.querySelector('.peek-body');
     const scroll = fresh ? 0 : (body?.scrollTop || 0);
     const draft = panel.querySelector('.peek-comment textarea')?.value || '';
+    const typingUpdate = !!document.activeElement?.matches?.('.peek-comment textarea');
     const st = t.statuses.find(s => s.id === t.status_id) || {};
     const done = st.type === 'done';
 
@@ -257,6 +260,7 @@
         show('subtasks') && (!t.parent || t.subtask_list.length) ? subtasksSection(t) : null,
         show('files') ? filesSection(t) : null,
         show('updates') ? updatesSection(t, draft) : null));
+    if (typingUpdate) panel.querySelector('.peek-comment textarea')?.focus({ preventScroll: true });
     const nb = panel.querySelector('.peek-body');
     if (nb) nb.scrollTop = scroll;
   }
@@ -395,7 +399,8 @@
           item.files.length ? h('div', { class: 'files compact' }, item.files.map(fileTile)) : null)
       : h('div', { class: 'event' }, h('span', {}, h('strong', {}, item.user_id === boot.me ? 'You' : (members.get(item.user_id)?.name || 'Someone')), ' ', item.text), h('time', {}, fmtWhen(item.at)))));
     if (!t.can.comment) return section('Updates', feed);
-    const box = h('textarea', { rows: 2, placeholder: 'Add an update… (Ctrl+Enter to send)' }, draft);
+    const mod = window.LPMKeys?.mod || 'Ctrl';
+    const box = h('textarea', { rows: 2, placeholder: `Add an update… ${mod}+Enter to send · Esc to close` }, draft);
     const files = h('input', { type: 'file', multiple: true, hidden: true });
     const chosen = h('div', { class: 'chosen-files' });
     files.addEventListener('change', () => chosen.replaceChildren(...[...files.files].map(f => h('span', { class: 'chip' }, f.name))));
@@ -407,7 +412,11 @@
       if (!d) box.value = text;
       else { const nb = panel?.querySelector('.peek-body'); if (nb) nb.scrollTop = nb.scrollHeight; }
     };
-    box.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
+      // Esc leaves the box; with nothing typed it closes the panel in one go.
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (box.value.trim()) box.blur(); else close(); }
+    });
     return section('Updates', feed,
       h('div', { class: 'peek-comment' }, box, chosen,
         h('div', { class: 'row-between' },

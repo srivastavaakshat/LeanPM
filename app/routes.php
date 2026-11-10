@@ -95,6 +95,7 @@ $router->post('/api/notes/entries/{entry}', [App\Controllers\NotesController::cl
 $router->post('/api/notes/entries/{entry}/delete', [App\Controllers\NotesController::class, 'deleteEntry'], ['api']);
 $router->post('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'createTask'], ['api']);
 $router->get('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'tasks'], ['api']);
+$router->get('/api/o/{org}/search', [App\Controllers\SearchController::class, 'tasks'], ['api']);
 $router->get('/api/projects/{project}/tasks', [TaskApiController::class, 'index'], ['api']);
 $router->post('/api/projects/{project}/tasks', [TaskApiController::class, 'store'], ['api']);
 $router->get('/api/projects/{project}/files', [TaskApiController::class, 'files'], ['api']);

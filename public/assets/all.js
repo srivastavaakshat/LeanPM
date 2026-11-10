@@ -1,4 +1,5 @@
-// All tasks: every visible task grouped by project, the Inbox first, with a "Move to" picker.
+// All tasks: every visible task grouped by project, the Inbox first, as a list (with a "Move to"
+// picker) or a board with one column per project, where dragging a card moves it to that project.
 (() => {
   'use strict';
   const { boot, h, svg, api, toast, fmtDate, isOverdue, avatars, peek } = window.LPM;
@@ -9,6 +10,10 @@
   const collapsed = new Set(JSON.parse(store.get(`lpm:${boot.org}:all:collapsed`) || '[]'));
   const f = { q: '', mine: false, hideDone: true, subtasks: false };
   const byId = new Map(boot.tasks.map(t => [t.id, t]));
+  let view = store.get(`lpm:${boot.org}:all:view`) === 'board' ? 'board' : 'list';
+  const page = document.querySelector('.all-page');
+  const openPeek = t => peek.open(t.id, { onChange: task => { apply(task); render(); } });
+  const canMoveTask = t => boot.can.move && t.can.edit && !t.parent_id;
 
   function visible(t) {
     if (!f.subtasks && t.parent_id && byId.has(t.parent_id)) return false;
@@ -37,7 +42,7 @@
   function row(t) {
     const st = statusOf(t);
     const done = st.type === 'done';
-    const canMove = boot.can.move && t.can.edit && !t.parent_id;
+    const canMove = canMoveTask(t);
     const inInbox = projects.get(t.project_id)?.inbox;
     const sel = canMove ? h('select', { class: 'move-select' + (inInbox ? ' is-inbox' : ''), title: 'Move to another project', onchange: e => move(t, +e.target.value) },
       inInbox ? h('option', { value: t.project_id, selected: true }, 'Move to project…') : null,
@@ -45,7 +50,7 @@
     const parent = t.parent_id ? byId.get(t.parent_id) : null;
     return h('div', { class: 'all-row' + (done ? ' is-done' : '') },
       h('span', { class: 'all-stage', style: `--sc:${st.color}` }, st.name),
-      h('button', { type: 'button', class: 'all-title', onclick: () => peek.open(t.id, { onChange: task => { apply(task); render(); } }) },
+      h('button', { type: 'button', class: 'all-title', onclick: () => openPeek(t) },
         parent ? h('span', { class: 'muted small' }, parent.title + ' › ') : null, t.title),
       h('span', { class: 'all-people' }, t.assignees.length ? avatars(t.assignees) : null),
       h('span', { class: 'all-due' + (isOverdue(t.due_date, done) ? ' is-overdue' : '') }, t.due_date ? fmtDate(t.due_date) : ''),
@@ -53,6 +58,9 @@
   }
 
   function render() {
+    page.classList.toggle('is-board', view === 'board');
+    document.querySelectorAll('[data-all-view]').forEach(b => b.classList.toggle('is-active', b.dataset.allView === view));
+    if (view === 'board') return renderBoard();
     const list = boot.tasks.filter(visible);
     groups.replaceChildren(...boot.projects.map(p => {
       const items = list.filter(t => t.project_id === p.id);
@@ -74,9 +82,169 @@
     }).filter(Boolean));
   }
 
+  // ---------- board: one column per project ----------
+  function renderBoard() {
+    const list = boot.tasks.filter(visible);
+    const cols = boot.projects.map(p => {
+      const items = list.filter(t => t.project_id === p.id);
+      return h('section', { class: 'column all-col' + (p.inbox ? ' is-inbox' : ''), style: `--sc:${p.inbox ? '#B7F34A' : '#94a3b8'}` },
+        h('header', { class: 'column-head' },
+          h('span', { class: 'status-pill' }, p.inbox ? 'Inbox' : p.name),
+          h('span', { class: 'count' }, items.length)),
+        h('div', { class: 'cards', dataset: { project: p.id } }, items.map(card)),
+        p.inbox ? null : h('a', { class: 'add-btn all-open', href: boot.base.replace(/\/$/, '') + `/o/${boot.org}/p/${p.id}` }, 'Open board →'));
+    });
+    groups.replaceChildren(h('div', { class: 'board all-board' }, cols));
+  }
+  function card(t) {
+    const st = statusOf(t);
+    const done = st.type === 'done';
+    const parent = t.parent_id ? byId.get(t.parent_id) : null;
+    const el = h('article', { class: 'tcard' + (done ? ' is-done' : '') + (canMoveTask(t) ? ' can-move' : '') + (landed === t.id ? ' is-landed' : ''), tabindex: '0', dataset: { id: t.id },
+      onclick: () => openPeek(t), onkeydown: e => { if (e.key === 'Enter') openPeek(t); } },
+      parent ? h('div', { class: 'card-parent' }, parent.title) : null,
+      h('div', { class: 'tcard-title' }, t.title),
+      h('div', { class: 'card-meta' },
+        h('span', { class: 'chip all-chip-stage', style: `--sc:${st.color}` }, st.name),
+        t.assignees.length ? avatars(t.assignees) : null,
+        t.due_date ? h('span', { class: 'chip' + (isOverdue(t.due_date, done) ? ' is-overdue' : '') }, fmtDate(t.due_date)) : null));
+    if (canMoveTask(t)) el.addEventListener('pointerdown', e => dragStart(e, t, el));
+    return el;
+  }
+
+  // Drag a card to another project's column (same feel as the project board: lift, slot, settle).
+  let drag = null, landed = null;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function dragStart(e, t, el) {
+    if (e.button !== 0 || drag) return;
+    const touch = e.pointerType !== 'mouse';
+    const d = drag = { t, el, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, id: e.pointerId, tilt: 0, vx: 0 };
+    if (touch) d.hold = setTimeout(() => lift(d), 220);
+    const move = ev => {
+      if (ev.pointerId !== d.id) return;
+      d.vx = ev.clientX - d.x; d.x = ev.clientX; d.y = ev.clientY;
+      if (!d.active) {
+        const far = Math.hypot(d.x - d.x0, d.y - d.y0) > (touch ? 8 : 5);
+        if (far && touch) return end(false);
+        if (far) lift(d);
+        return;
+      }
+      ev.preventDefault();
+      follow(d);
+    };
+    const up = ev => { if (ev.pointerId === d.id) end(d.active); };
+    const key = ev => { if (ev.key === 'Escape' && d.active) { ev.preventDefault(); end(false); } };
+    const noScroll = ev => { if (d.active) ev.preventDefault(); };
+    function end(commit) {
+      clearTimeout(d.hold);
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+      removeEventListener('keydown', key, true); removeEventListener('touchmove', noScroll);
+      if (d.active) drop(d, commit); else drag = null;
+    }
+    addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+    addEventListener('keydown', key, true); addEventListener('touchmove', noScroll, { passive: false });
+  }
+  function lift(d) {
+    if (d.active || drag !== d) return;
+    d.active = true;
+    const r = d.el.getBoundingClientRect();
+    d.dx = d.x - r.left; d.dy = d.y - r.top;
+    d.from = d.el.parentElement;
+    d.slot = h('div', { class: 'drop-slot', style: `height:${r.height}px` });
+    d.ghost = d.el.cloneNode(true);
+    d.ghost.classList.add('is-ghost');
+    Object.assign(d.ghost.style, { width: r.width + 'px', left: '0px', top: '0px', transform: `translate(${r.left}px, ${r.top}px)` });
+    document.body.append(d.ghost);
+    d.el.replaceWith(d.slot);
+    document.body.classList.add('is-dragging-card');
+    requestAnimationFrame(() => d.ghost.classList.add('is-lifted'));
+    follow(d);
+  }
+  function follow(d) {
+    d.tilt += (Math.max(-7, Math.min(7, d.vx * 0.9)) - d.tilt) * 0.3;
+    d.ghost.style.transform = `translate(${d.x - d.dx}px, ${d.y - d.dy}px) rotate(${reduce ? 0 : d.tilt.toFixed(2)}deg) scale(1.03)`;
+    const cols = [...groups.querySelectorAll('.all-col')];
+    const target = cols.find(c => { const r = c.getBoundingClientRect(); return d.x >= r.left && d.x <= r.right; }) || d.from.closest('.all-col');
+    cols.forEach(c => c.classList.toggle('is-target', c === target && c !== d.from.closest('.all-col')));
+    const cards = target.querySelector('.cards');
+    if (d.slot.parentElement !== cards) cards.prepend(d.slot);
+    const board = groups.querySelector('.all-board'), br = board.getBoundingClientRect();
+    if (d.x > innerWidth - 70) board.scrollLeft += 12; else if (d.x < br.left + 70) board.scrollLeft -= 12;
+  }
+  function drop(d, commit) {
+    const block = ev => { ev.stopPropagation(); ev.preventDefault(); };
+    addEventListener('click', block, true);
+    setTimeout(() => removeEventListener('click', block, true), 0);
+    if (!commit) d.from.prepend(d.slot);
+    const projectId = +d.slot.parentElement.dataset.project;
+    const sr = d.slot.getBoundingClientRect();
+    d.ghost.classList.remove('is-lifted');
+    d.ghost.classList.add('is-settling');
+    d.ghost.style.transform = `translate(${sr.left}px, ${sr.top}px)`;
+    let ended = false;
+    const done = () => {
+      if (ended) return;
+      ended = true;
+      d.ghost.remove();
+      d.slot.replaceWith(d.el);
+      groups.querySelectorAll('.is-target').forEach(c => c.classList.remove('is-target'));
+      document.body.classList.remove('is-dragging-card');
+      drag = null;
+      if (commit && projectId !== d.t.project_id) moveAndGlow(d.t, projectId);
+    };
+    d.ghost.addEventListener('transitionend', done, { once: true });
+    setTimeout(done, reduce ? 0 : 320);
+  }
+  async function moveAndGlow(t, projectId) {
+    landed = t.id;
+    setTimeout(() => { if (landed === t.id) landed = null; }, 900);
+    try { await move(t, projectId); } catch { render(); }
+    groups.querySelector(`.tcard[data-id="${t.id}"]`)?.focus({ preventScroll: true });
+  }
+
+  // ---------- keyboard ----------
+  function setView(v) {
+    view = v;
+    store.set(`lpm:${boot.org}:all:view`, v);
+    render();
+  }
+  document.querySelectorAll('[data-all-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.allView)));
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || drag || window.LPMKeys?.typing(e.target) || document.querySelector('dialog[open], .palette, .peek')) return;
+    const k = e.key.toLowerCase();
+    if ((k === 'b' || k === 'l') && !e.shiftKey) { e.preventDefault(); setView(k === 'b' ? 'board' : 'list'); return; }
+    const card = e.target.closest?.('.all-board .tcard');
+    if (!card || !e.key.startsWith('Arrow')) return;
+    e.preventDefault();
+    const cols = [...groups.querySelectorAll('.all-col')].map(c => [...c.querySelectorAll('.tcard')]);
+    const ci = cols.findIndex(c => c.includes(card)), ri = cols[ci].indexOf(card);
+    const t = byId.get(+card.dataset.id);
+    if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      // Move the task to the previous/next project.
+      const next = boot.projects[boot.projects.findIndex(p => p.id === t.project_id) + (e.key === 'ArrowLeft' ? -1 : 1)];
+      if (next && canMoveTask(t)) moveAndGlow(t, next.id);
+      return;
+    }
+    if (e.key === 'ArrowUp') cols[ci][ri - 1]?.focus();
+    else if (e.key === 'ArrowDown') cols[ci][ri + 1]?.focus();
+    else {
+      const step = e.key === 'ArrowLeft' ? -1 : 1;
+      for (let c = ci + step; c >= 0 && c < cols.length; c += step) if (cols[c].length) { cols[c][Math.min(ri, cols[c].length - 1)].focus(); break; }
+    }
+    document.activeElement?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
+  document.addEventListener('focusin', e => {
+    const card = e.target.closest?.('.all-board .tcard');
+    if (card && card.matches(':focus-visible')) window.LPMKeys?.showHint([[['←', '→', '↑', '↓'], 'move'], [['↵'], 'open'], [['⇧', '←', '→'], 'move to project']]);
+  });
+  document.addEventListener('focusout', e => { if (e.target.closest?.('.all-board .tcard')) window.LPMKeys?.hideHint(150); });
+
   document.getElementById('a-search').addEventListener('input', e => { f.q = e.target.value.trim().toLowerCase(); render(); });
   document.getElementById('a-mine').addEventListener('change', e => { f.mine = e.target.checked; render(); });
   document.getElementById('a-hide-done').addEventListener('change', e => { f.hideDone = e.target.checked; render(); });
   document.getElementById('a-subtasks').addEventListener('change', e => { f.subtasks = e.target.checked; render(); });
   render();
+  // Opened from the ⌘K palette on another page.
+  const initial = +new URL(location.href).searchParams.get('task');
+  if (initial && byId.has(initial)) openPeek(byId.get(initial));
 })();

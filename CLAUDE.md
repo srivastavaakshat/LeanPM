@@ -3,6 +3,7 @@
 - Same stack and conventions as Rare Flavours / Wear Human: plain PHP, no Composer, no build step, MariaDB in production, SQLite locally. Keep it that way.
 - **Permissions are checked on the server, always.** Every controller enters an org through `Access::org()`, `Access::task()` or `Access::orgById()` and then calls `Access::require()` / `Access::requireTask()`. A new endpoint without one of those is a bug. Hiding a button is never the guard.
 - **Owners** (`users.is_owner`) manage organizations and other owners from `/admin` (`AdminController`, guarded by `Access::owner()`). They get **no** access inside an org without a membership: `Access::enter()` treats them like anyone else. Add people to an org with `Members::add()`.
+- Keyboard: `public/assets/palette.js` (every page) owns ⌘K, `?`, `G …` and `window.LPMKeys` (hint pill, `typing()`). Pages open tasks by listening for the cancelable `lpm:open-task` event; shortcuts must ignore keys while typing (`LPMKeys.typing`). Add new shortcuts to the `?` sheet (`SHEET`).
 - New permission? Add it to `Perms::DEFS` and every preset in `Perms::PRESETS`; the member form and clamp logic pick it up automatically. Update PRD §5.1a.
 - Status changes go through `Tasks::setStatus()` so `completed_at` and the activity log stay right (reports depend on `completed_at`).
 - Custom fields: definitions in `project_fields`, values in `task_field_values` (text). Validate with `Fields::clean()`; templates in `Fields::TEMPLATES` sit beside the stage templates in `Tasks::TEMPLATES` (same keys).
