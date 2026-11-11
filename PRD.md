@@ -245,6 +245,7 @@ A permission change takes effect on the member's next page load. The member's pr
 - **Limits and permissions:** up to 2,000 rows or 5 MB per file. Columns the person isn't allowed to set (assignees, priority/dates/fields) are skipped and reported. The import page offers a sample CSV with the project's stages and fields.
 
 ### 5.12 Meeting notes
+- The Meeting notes page has tabs at the top: **All**, **Only me** (private docs) and **Shared** (shared with the organization), each with a count; the doc cards below follow the tab.
 - **Docs:** one running doc per meeting series, e.g. "Internal stand-up", "Weekly client call", or "Sales team sync". Listed under **Meeting notes** in the sidebar.
   - A doc is private to the person who created it unless shared with the organization.
   - Members can read a shared doc and add their own entries. Only the creator can edit others' entries, change the doc's settings, or delete it.

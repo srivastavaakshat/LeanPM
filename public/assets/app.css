@@ -1087,3 +1087,10 @@ kbd + kbd { margin-left: 3px; }
 .tcard.is-ghost.is-settling.is-nested { scale: .4; opacity: 0; transition: transform .3s var(--ease), scale .3s var(--ease), opacity .3s; }
 .drop-slot.is-idle { opacity: .35; }
 @media (prefers-reduced-motion: reduce) { .card-subs { animation: none; } .tcard.is-nest-target { transform: none; } }
+
+/* Meeting notes: All / Only me / Shared tabs above the doc cards */
+.notes-tabs { margin: 0 0 18px; }
+.notes-tabs a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; color: var(--muted); font-weight: 550; text-decoration: none; transition: background .2s, color .2s; }
+.notes-tabs a:hover { color: var(--text); }
+.notes-tabs a.is-active { background: var(--accent); color: #fff; box-shadow: 0 4px 12px -4px rgba(20, 33, 61, .5); }
+.notes-tabs .count { font-size: 12px; opacity: .7; }

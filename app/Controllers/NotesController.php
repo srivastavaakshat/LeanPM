@@ -55,7 +55,16 @@ final class NotesController
             $doc['linked_task'] = self::linkedTask($doc)['title'] ?? null; // only tasks this member can see
         }
         unset($doc);
-        return view('notes/index', ['title' => 'Meeting notes', 'docs' => $docs, 'projects' => $this->projectChoices()]);
+        // Tabs: every doc, only your private ones, or the ones shared with the organization.
+        $counts = ['all' => count($docs), 'private' => 0, 'shared' => 0];
+        foreach ($docs as $d) {
+            $counts[$d['visibility'] === 'org' ? 'shared' : 'private']++;
+        }
+        $show = in_array($_GET['show'] ?? '', ['private', 'shared'], true) ? $_GET['show'] : 'all';
+        if ($show !== 'all') {
+            $docs = array_values(array_filter($docs, fn ($d) => ($d['visibility'] === 'org') === ($show === 'shared')));
+        }
+        return view('notes/index', ['title' => 'Meeting notes', 'docs' => $docs, 'show' => $show, 'counts' => $counts, 'projects' => $this->projectChoices()]);
     }
 
     public function store(string $org): never

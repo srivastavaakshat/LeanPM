@@ -12,7 +12,21 @@ $base = '/o/' . $org['slug'] . '/notes';
     <button type="button" class="btn btn-primary" data-open="new-doc">+ New doc</button>
   </header>
 
-  <?php if (!$docs): ?>
+  <?php if ($counts['all']): ?>
+    <nav class="view-toggle notes-tabs" aria-label="Which docs">
+      <?php foreach (['all' => 'All', 'private' => 'Only me', 'shared' => 'Shared'] as $k => $label): ?>
+        <a href="<?= e(url($base . ($k === 'all' ? '' : '?show=' . $k))) ?>" class="<?= $show === $k ? 'is-active' : '' ?>"<?= $show === $k ? ' aria-current="page"' : '' ?>><?= $label ?> <span class="count"><?= (int) $counts[$k] ?></span></a>
+      <?php endforeach; ?>
+    </nav>
+  <?php endif; ?>
+
+  <?php if (!$docs && $counts['all']): ?>
+    <div class="card empty-state notes-empty">
+      <h2><?= $show === 'shared' ? 'No shared docs yet' : 'No private docs yet' ?></h2>
+      <p><?= $show === 'shared' ? 'Docs shared with everyone in ' . e($org['name']) . ' show up here. Share one from its Settings.' : 'Docs only you can see show up here.' ?></p>
+      <a class="btn" href="<?= e(url($base)) ?>">See all docs</a>
+    </div>
+  <?php elseif (!$docs): ?>
     <div class="card empty-state notes-empty">
       <h2>Start your first meeting doc</h2>
       <p>For example “Internal stand-up”, “Weekly client call” or “Sales team sync”. Write notes during the call, type <kbd>/</kbd> at the end of a line to turn it into a task, and next time you’ll see what was decided and how those tasks are going.</p>
