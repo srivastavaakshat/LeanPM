@@ -76,12 +76,18 @@ final class NotesController
             flash('error', 'Give the doc a name, e.g. “Call with CEO”.');
             redirect("/o/{$o['slug']}/notes");
         }
+        $project = $this->validProject(input('default_project'));
+        $main = $this->mainTask(null, $project, $title, "/o/{$o['slug']}/notes");
         $id = DB::insert('notes_docs', [
             'org_id' => $o['id'], 'owner_id' => Auth::id(), 'title' => $title,
             'visibility' => input('visibility') === 'org' ? 'org' : 'private',
-            'default_project_id' => $this->validProject(input('default_project')),
+            'default_project_id' => $project,
+            'task_id' => $main['id'] ?? null,
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        if (!empty($main['id'])) {
+            self::logLink(DB::one('SELECT * FROM notes_docs WHERE id = ?', [$id]), $main['id'], true);
+        }
         redirect("/o/{$o['slug']}/notes/{$id}");
     }
 
@@ -130,9 +136,15 @@ final class NotesController
         if (input('sections_form') === '1') {
             $set['peek_sections'] = json_encode(array_values(array_intersect(array_keys(self::PEEK_SECTIONS), (array) ($_POST['peek'] ?? []))));
         }
-        if (input('unlink_task') === '1' && $d['task_id']) {
-            $set['task_id'] = null;
-            self::logLink($d, (int) $d['task_id'], false);
+        $main = $this->mainTask($d, $set['default_project_id'], $set['title'], "/o/{$o['slug']}/notes/{$d['id']}");
+        if ($main['change']) {
+            if ($d['task_id']) {
+                self::logLink($d, (int) $d['task_id'], false);
+            }
+            $set['task_id'] = $main['id'];
+            if ($main['id']) {
+                self::logLink($d, $main['id'], true);
+            }
         }
         DB::update('notes_docs', $set, 'id = ?', [$d['id']]);
         flash('success', 'Doc settings saved.');
@@ -359,6 +371,39 @@ final class NotesController
             abort(422, 'Connect the doc to the main task. Tasks made in it become its subtasks, and subtasks can’t have their own.');
         }
         return $t;
+    }
+
+    /**
+     * The "Main task" choice from the New doc / Doc settings form: keep what's there, none, an
+     * existing main task, or a new one created in the doc's project. Returns ['change' => bool, 'id' => ?int].
+     */
+    private function mainTask(?array $d, ?int $projectId, string $docTitle, string $back): array
+    {
+        $current = $d ? self::linkedTask($d) : null;
+        $mode = (string) input('main_task', $current ? 'keep' : 'none');
+        if ($mode === 'existing') {
+            $tid = (int) input('main_task_id');
+            if (!$tid) {
+                flash('error', 'Pick the main task from the search results, or choose another option.');
+                redirect($back);
+            }
+            $org = Access::$org;
+            $t = $this->docTask($tid);
+            if ((int) $t['org_id'] !== (int) $org['id']) {
+                abort(404);
+            }
+            return ['change' => (int) ($d['task_id'] ?? 0) !== (int) $t['id'], 'id' => (int) $t['id']];
+        }
+        if ($mode === 'new') {
+            Access::require('create_tasks');
+            $title = mb_substr(trim((string) input('main_task_title', '')), 0, 255) ?: $docTitle;
+            $project = Access::project($projectId ?? Access::inboxId());
+            return ['change' => true, 'id' => Tasks::create($project, $title)];
+        }
+        if ($mode === 'none') {
+            return ['change' => !empty($d['task_id']), 'id' => null];
+        }
+        return ['change' => false, 'id' => null];
     }
 
     private static function logLink(array $d, int $taskId, bool $linked): void

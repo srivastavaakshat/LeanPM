@@ -65,15 +65,10 @@ foreach ($projects as $p) { if ($p['id'] === $boot['doc']['default_project']) { 
     <?= csrf_field() ?>
     <h2>Doc settings</h2>
     <label class="field"><span>Name</span><input name="title" value="<?= e($doc['title']) ?>" required maxlength="120"></label>
-    <?php if ($linked): ?>
-      <div class="field"><span>Connected task</span>
-        <p class="hint" style="margin:0 0 6px">“<?= e($linked['title']) ?>”. Tasks created here become its subtasks.</p>
-        <label class="check"><input type="checkbox" name="unlink_task" value="1"> Disconnect from this task (new tasks go to the project below instead)</label>
-      </div>
-    <?php endif; ?>
-    <label class="field"><span><?= $linked ? 'When not connected, new tasks go to' : 'New tasks go to' ?></span>
+    <label class="field"><span><?= $linked ? 'Project (for a new main task, or new tasks when there’s no main task)' : 'New tasks go to' ?></span>
       <select name="default_project"><?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>" <?= $p['id'] === $boot['doc']['default_project'] ? 'selected' : '' ?>><?= $p['inbox'] ? 'Inbox (sort them into projects later)' : e($p['name']) ?></option><?php endforeach; ?></select>
     </label>
+    <?php require __DIR__ . '/_main_task.php'; ?>
     <fieldset class="field"><legend>Who can see it</legend>
       <label class="check"><input type="radio" name="visibility" value="private" <?= $doc['visibility'] !== 'org' ? 'checked' : '' ?>> Only me</label>
       <label class="check"><input type="radio" name="visibility" value="org" <?= $doc['visibility'] === 'org' ? 'checked' : '' ?>> Everyone in <?= e($org['name']) ?> (they can read and add entries)</label>

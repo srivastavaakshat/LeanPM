@@ -270,6 +270,7 @@ A permission change takes effect on the member's next page load. The member's pr
 - **Permission:** *Use meeting notes* is on for Admin, Lead, and Designer, and off for Viewer. Creating tasks still needs *Create tasks*.
 
 ### 5.12a Meeting notes and tasks; export
+- **Main task from the doc itself** (optional). The **New doc** dialog and **Doc settings** have a *Main task* choice: none, **pick an existing task** (search; main tasks only), or **create a new main task** (named in the dialog, or after the doc; created in the doc's project and assigned to you). Every task added in the doc then becomes its subtask. Settings can also keep, change, or disconnect it.
 - **Connect a doc to a task** (optional). In a task's **Docs** section: **+ New doc** starts a doc named after the task (shared with the organization) and opens it; **Connect a doc** picks one of your own docs. A doc is connected to one task at a time, and only to a main task (not a subtask).
 - **While a doc is connected, tasks you create in it become subtasks of that task**, in its project. The doc shows a banner with a link to the task, and the task draft says “Subtask · ↳ task name”. Disconnect from the doc's Settings or with × in the task's Docs list (only the doc's creator can connect or disconnect it).
 - The task's history records connecting and disconnecting. The quick view lists connected docs, and the Meeting notes list shows each doc's task.

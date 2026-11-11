@@ -63,6 +63,7 @@ $base = '/o/' . $org['slug'] . '/notes';
         <?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>"><?= $p['inbox'] ? 'Inbox (sort them into projects later)' : e($p['name']) ?></option><?php endforeach; ?>
       </select>
     </label>
+    <?php require __DIR__ . '/_main_task.php'; ?>
     <fieldset class="field"><legend>Who can see it</legend>
       <label class="check"><input type="radio" name="visibility" value="private" checked> Only me</label>
       <label class="check"><input type="radio" name="visibility" value="org"> Everyone in <?= e($org['name']) ?> (they can read and add entries)</label>
