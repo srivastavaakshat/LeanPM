@@ -241,7 +241,7 @@
         h('span', { class: 'slash-icon' }, svg(ICON.task)),
         h('span', { class: 'grow' }, h('strong', {}, 'Task'), h('span', { class: 'muted small slash-hint' }, ' — turn this line into a task')),
         h('kbd', {}, 'Enter')),
-      h('div', { class: 'slash-foot muted small' }, 'Esc to keep typing'));
+      h('div', { class: 'slash-foot muted small' }, DOC.task ? `Becomes a subtask of “${DOC.task.title}” · Esc to keep typing` : 'Esc to keep typing'));
     document.body.append(slash.el);
     slash.el.style.top = (rect.bottom + scrollY + 6) + 'px';
     slash.el.style.left = Math.max(8, Math.min(rect.left + scrollX - 8, innerWidth - 300)) + 'px';
@@ -284,11 +284,14 @@
     const prefill = hasOther ? '' : block.textContent.replace(/\s+/g, ' ').trim();
     if (hasOther) { const p = document.createElement('p'); block.after(p); block = p; }
 
-    const input = h('input', { class: 'td-input', value: prefill, placeholder: 'Name the task, then press Enter', maxlength: 255 });
-    const projectSel = h('select', { class: 'td-project', title: 'Project for this task' },
-      boot.projects.map(p => h('option', { value: p.id, selected: p.id === lastProject }, p.inbox ? 'Inbox' : p.name)));
+    const parent = DOC.task; // connected to a task: new tasks become its subtasks
+    const input = h('input', { class: 'td-input', value: prefill, placeholder: parent ? 'Name the subtask, then press Enter' : 'Name the task, then press Enter', maxlength: 255 });
+    const projectSel = parent
+      ? h('span', { class: 'td-parent', title: `Becomes a subtask of “${parent.title}”` }, '↳ ', parent.title)
+      : h('select', { class: 'td-project', title: 'Project for this task' },
+        boot.projects.map(p => h('option', { value: p.id, selected: p.id === lastProject }, p.inbox ? 'Inbox' : p.name)));
     const widget = h('span', { class: 'task-draft', contenteditable: 'false', dataset: { text: prefill } },
-      h('span', { class: 'td-tag' }, svg(ICON.task), 'Task'),
+      h('span', { class: 'td-tag' }, svg(ICON.task), parent ? 'Subtask' : 'Task'),
       input, projectSel,
       h('button', { type: 'button', class: 'td-ok', title: 'Create task (Enter)', onclick: () => create() }, svg(ICON.check)),
       h('button', { type: 'button', class: 'td-cancel', title: 'Cancel (Esc)', onclick: () => cancel() }, svg(ICON.x)));
@@ -297,7 +300,7 @@
     input.setSelectionRange(input.value.length, input.value.length);
 
     input.addEventListener('input', () => { widget.dataset.text = input.value; scheduleSave(e, 1500); });
-    projectSel.addEventListener('change', () => { lastProject = +projectSel.value; });
+    if (!parent) projectSel.addEventListener('change', () => { lastProject = +projectSel.value; });
     [input, projectSel].forEach(el => el.addEventListener('keydown', ev => {
       ev.stopPropagation();
       if (ev.key === 'Enter') { ev.preventDefault(); create(); }
@@ -312,7 +315,7 @@
       busy = true;
       widget.classList.add('is-busy');
       try {
-        const d = await api('POST', `/api/notes/${DOC.id}/tasks`, { title, project_id: +projectSel.value });
+        const d = await api('POST', `/api/notes/${DOC.id}/tasks`, parent ? { title } : { title, project_id: +projectSel.value });
         chips[d.task.id] = d.task;
         const chip = h('span', { class: 'task-ref', dataset: { task: d.task.id } }, title);
         widget.replaceWith(chip);
@@ -325,7 +328,7 @@
         e.body.focus(); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
         await save(e);
         drawRail();
-        toast(`Task created in ${d.task.project.inbox ? 'the Inbox' : d.task.project.name}`);
+        toast(parent ? `Subtask added to “${parent.title}”` : `Task created in ${d.task.project.inbox ? 'the Inbox' : d.task.project.name}`);
       } catch {
         busy = false;
         widget.classList.remove('is-busy');

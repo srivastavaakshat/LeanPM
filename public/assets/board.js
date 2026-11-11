@@ -1041,6 +1041,7 @@
         h('h3', {}, 'Subtasks', t.subtasks ? h('span', { class: 'muted' }, ` ${t.subtasks_done}/${t.subtasks} done`) : null),
         t.subtasks ? h('div', { class: 'progress' }, h('span', { style: `width:${Math.round(t.subtasks_done / t.subtasks * 100)}%` })) : null,
         subs, subActions) : null,
+      docsSection(t),
       h('div', { class: 'section' },
         h('h3', {}, 'Files'), files.children.length ? files : h('p', { class: 'muted small' }, boot.can.upload ? 'Drop files anywhere on this side, or upload. Up to ' + boot.maxUpload + ' MB each.' : 'No files.'),
         uploadBtn, fileInput));
@@ -1194,6 +1195,55 @@
       fileInput);
     box.sendFiles = list => send([...list]);
     return box;
+  }
+
+  // ---------- meeting-notes docs connected to a task ----------
+  // A connected doc is where the task gets discussed; tasks created in it become its subtasks.
+  const DOC_ICON = '<path d="M6 3h5l4 4v9a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M11 3v4h4M8 11h5M8 14h3"/>';
+  function docsSection(t) {
+    if (!t.can.docs && !(t.docs || []).length) return null;
+    const rows = (t.docs || []).map(d => h('div', { class: 'task-doc' },
+      h('span', { class: 'task-doc-icon' }, svg(DOC_ICON)),
+      h('a', { class: 'grow task-doc-title', href: d.url, title: 'Open the doc' }, d.title),
+      d.visibility === 'private' ? h('span', { class: 'tag' }, 'Only you') : null,
+      d.can_unlink ? h('button', { type: 'button', class: 'icon-btn small', title: 'Disconnect this doc', onclick: async () => {
+        const r = await api('POST', `/api/tasks/${t.id}/docs/${d.id}/unlink`);
+        state.detail = r.task; renderDrawer();
+        toast(`Disconnected “${d.title}”`);
+      } }, svg(ICON.x)) : null));
+    const actions = t.can.docs ? h('div', { class: 'row-center gap-s' },
+      h('button', { type: 'button', class: 'btn btn-sm', onclick: async e => {
+        e.currentTarget.disabled = true;
+        const r = await api('POST', `/api/tasks/${t.id}/docs`, {});
+        location.href = r.doc.url; // straight into the new doc
+      } }, '+ New doc'),
+      h('button', { type: 'button', class: 'btn btn-sm', onclick: e => docPicker(e.currentTarget, t) }, svg(DOC_ICON), ' Connect a doc')) : null;
+    return h('div', { class: 'section' },
+      h('h3', {}, 'Docs', rows.length ? h('span', { class: 'muted' }, ` ${rows.length}`) : null),
+      rows.length ? h('div', { class: 'task-docs' }, rows) : null,
+      h('p', { class: 'muted small' }, 'Meeting notes for this task. Tasks you create in a connected doc become its subtasks.'),
+      actions);
+  }
+  async function docPicker(anchor, t) {
+    closePicker();
+    const list = h('div', { class: 'picker-list' }, h('p', { class: 'muted small pad' }, 'Loading…'));
+    const pop = h('div', { class: 'popover wide' }, h('div', { class: 'slash-label' }, 'Your meeting notes'), list);
+    document.body.append(pop);
+    const r = anchor.getBoundingClientRect();
+    pop.style.top = Math.min(r.bottom + 6, innerHeight - 340) + scrollY + 'px';
+    pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 360)) + scrollX + 'px';
+    openPicker = pop;
+    const d = await api('GET', `/api/tasks/${t.id}/docs/available`);
+    list.replaceChildren(...d.docs.map(doc => h('button', {
+      type: 'button', class: 'picker-item',
+      onclick: async () => {
+        closePicker();
+        const res = await api('POST', `/api/tasks/${t.id}/docs/link`, { doc_id: doc.id });
+        state.detail = res.task; renderDrawer();
+        toast(`Connected “${doc.title}”. Tasks you create in it become subtasks here.`);
+      },
+    }, svg(DOC_ICON), h('span', { class: 'grow' }, doc.title, doc.linked_to ? h('span', { class: 'muted small' }, ` · now on “${doc.linked_to}”`) : null))));
+    if (!d.docs.length) list.append(h('p', { class: 'muted small pad' }, 'You have no other meeting notes. Use “+ New doc” to start one for this task.'));
   }
 
   function linkPicker(anchor, t) {

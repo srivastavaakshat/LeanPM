@@ -112,3 +112,7 @@ document.querySelectorAll('[data-autohide]').forEach(el => setTimeout(() => el.c
     addEventListener(type, e => { if (hasFiles(e) && !e.target.closest?.('input[type=file]')) e.preventDefault(); });
   }
 })();
+
+// Small <details> menus (Export, …) close when you click elsewhere or press Esc.
+document.addEventListener('click', e => document.querySelectorAll('details.export-menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('details.export-menu[open]').forEach(d => { d.open = false; }); });

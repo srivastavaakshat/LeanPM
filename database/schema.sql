@@ -202,9 +202,11 @@ CREATE TABLE IF NOT EXISTS notes_docs (
     visibility VARCHAR(10) NOT NULL DEFAULT 'private',
     default_project_id INT UNSIGNED NULL,
     peek_sections TEXT NULL,
+    task_id INT UNSIGNED NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     KEY notes_docs_org (org_id),
+    KEY notes_docs_task (task_id),
     FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
     FOREIGN KEY (owner_id) REFERENCES users(id),
     FOREIGN KEY (default_project_id) REFERENCES projects(id) ON DELETE SET NULL

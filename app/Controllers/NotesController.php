@@ -51,6 +51,10 @@ final class NotesController
              ORDER BY COALESCE((SELECT MAX(meeting_at) FROM notes_entries e WHERE e.doc_id = d.id), d.created_at) DESC",
             [$o['id'], Auth::id()]
         );
+        foreach ($docs as &$doc) {
+            $doc['linked_task'] = self::linkedTask($doc)['title'] ?? null; // only tasks this member can see
+        }
+        unset($doc);
         return view('notes/index', ['title' => 'Meeting notes', 'docs' => $docs, 'projects' => $this->projectChoices()]);
     }
 
@@ -85,7 +89,7 @@ final class NotesController
 
         $members = Access::members(includeInactive: true);
         $boot = [
-            'doc'      => ['id' => (int) $d['id'], 'title' => $d['title'], 'visibility' => $d['visibility'], 'default_project' => $d['default_project_id'] ? (int) $d['default_project_id'] : Access::inboxId(), 'owner' => (int) $d['owner_id'], 'sections' => self::sections($d['peek_sections'])],
+            'doc'      => ['id' => (int) $d['id'], 'title' => $d['title'], 'visibility' => $d['visibility'], 'default_project' => $d['default_project_id'] ? (int) $d['default_project_id'] : Access::inboxId(), 'owner' => (int) $d['owner_id'], 'sections' => self::sections($d['peek_sections']), 'task' => self::taskSummary(self::linkedTask($d))],
             'entries'  => $entries,
             'projects' => $this->projectChoices(),
             'members'  => array_map(fn ($m) => ['id' => (int) $m['id'], 'name' => $m['name'], 'color' => $m['color'], 'initials' => initials($m['name']), 'active' => (bool) $m['active']], $members),
@@ -99,7 +103,7 @@ final class NotesController
             'csrf'     => csrf_token(),
             'now'      => date('Y-m-d H:i:s'),
         ];
-        return view('notes/doc', ['title' => $d['title'], 'doc' => $d, 'boot' => $boot, 'projects' => $this->projectChoices()]);
+        return view('notes/doc', ['title' => $d['title'], 'doc' => $d, 'boot' => $boot, 'projects' => $this->projectChoices(), 'linked' => $boot['doc']['task']]);
     }
 
     public function update(string $org, string $doc): never
@@ -116,6 +120,10 @@ final class NotesController
         // Only the full Settings dialog sends the quick-view checklist (the header's project picker doesn't).
         if (input('sections_form') === '1') {
             $set['peek_sections'] = json_encode(array_values(array_intersect(array_keys(self::PEEK_SECTIONS), (array) ($_POST['peek'] ?? []))));
+        }
+        if (input('unlink_task') === '1' && $d['task_id']) {
+            $set['task_id'] = null;
+            self::logLink($d, (int) $d['task_id'], false);
         }
         DB::update('notes_docs', $set, 'id = ?', [$d['id']]);
         flash('success', 'Doc settings saved.');
@@ -181,12 +189,18 @@ final class NotesController
         if ($title === '') {
             abort(422, 'Give the task a name.');
         }
-        $pid = (int) ($in['project_id'] ?? 0) ?: (int) ($d['default_project_id'] ?? 0) ?: Access::inboxId();
-        $project = Access::project($pid);
+        $parent = self::linkedTask($d);
+        if ($parent) {
+            // A doc connected to a task: new tasks become its subtasks, in its project.
+            $project = Access::project((int) $parent['project_id']);
+        } else {
+            $pid = (int) ($in['project_id'] ?? 0) ?: (int) ($d['default_project_id'] ?? 0) ?: Access::inboxId();
+            $project = Access::project($pid);
+        }
         if ((int) $project['archived']) {
             abort(422, 'That project is archived. Pick another one.');
         }
-        $id = Tasks::create($project, $title);
+        $id = Tasks::create($project, $title, null, $parent);
         Activity::log($id, 'from_notes', null, $d['title']);
         json_response(['task' => $this->chips([$id])[$id] ?? null], 201);
     }
@@ -203,7 +217,148 @@ final class NotesController
         json_response(['tasks' => (object) $this->chips(array_values(array_unique($ids)))]);
     }
 
+    // ---------- docs on a task ----------
+
+    /** Start a new doc connected to this task (shared with the org, named after the task). */
+    public function createForTask(string $task): never
+    {
+        $t = $this->docTask((int) $task);
+        $title = mb_substr(trim((string) (json_input()['title'] ?? '')), 0, 120) ?: mb_substr($t['title'], 0, 120);
+        $isInbox = (int) DB::value('SELECT is_inbox FROM projects WHERE id = ?', [$t['project_id']]);
+        $id = DB::insert('notes_docs', [
+            'org_id' => Access::$org['id'], 'owner_id' => Auth::id(), 'title' => $title, 'visibility' => 'org',
+            'default_project_id' => $isInbox ? null : (int) $t['project_id'], 'task_id' => $t['id'],
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $d = DB::one('SELECT * FROM notes_docs WHERE id = ?', [$id]);
+        self::logLink($d, (int) $t['id'], true);
+        json_response(['doc' => self::docSummary($d), 'task' => Tasks::detail(Access::task((int) $t['id']))], 201);
+    }
+
+    /** Docs you created that could be connected to this task. */
+    public function availableForTask(string $task): never
+    {
+        $t = $this->docTask((int) $task);
+        $rows = DB::all('SELECT * FROM notes_docs WHERE org_id = ? AND owner_id = ? AND (task_id IS NULL OR task_id <> ?) ORDER BY updated_at DESC', [Access::$org['id'], Auth::id(), $t['id']]);
+        json_response(['docs' => array_map(function ($d) {
+            $other = self::linkedTask($d);
+            return self::docSummary($d) + ['linked_to' => $other ? $other['title'] : null];
+        }, $rows)]);
+    }
+
+    public function linkToTask(string $task): never
+    {
+        $t = $this->docTask((int) $task);
+        $d = $this->doc((int) (json_input()['doc_id'] ?? 0), ownerOnly: true);
+        if ($d['task_id'] && (int) $d['task_id'] !== (int) $t['id']) {
+            self::logLink($d, (int) $d['task_id'], false); // moved off its previous task
+        }
+        DB::update('notes_docs', ['task_id' => $t['id'], 'updated_at' => now()], 'id = ?', [$d['id']]);
+        self::logLink($d, (int) $t['id'], true);
+        json_response(['task' => Tasks::detail(Access::task((int) $t['id']))]);
+    }
+
+    public function unlinkFromTask(string $task, string $doc): never
+    {
+        $t = Access::task((int) $task);
+        $d = $this->doc((int) $doc, ownerOnly: true);
+        if ((int) $d['task_id'] === (int) $t['id']) {
+            DB::update('notes_docs', ['task_id' => null, 'updated_at' => now()], 'id = ?', [$d['id']]);
+            self::logLink($d, (int) $t['id'], false);
+        }
+        json_response(['task' => Tasks::detail(Access::task((int) $t['id']))]);
+    }
+
+    /** Docs connected to a task that the current member can open (for the task panel). */
+    public static function docsForTask(int $taskId): array
+    {
+        if (!Access::can('meeting_notes')) {
+            return [];
+        }
+        $rows = DB::all("SELECT * FROM notes_docs WHERE task_id = ? AND org_id = ? AND (owner_id = ? OR visibility = 'org') ORDER BY created_at", [$taskId, Access::$org['id'], Auth::id()]);
+        return array_map(fn ($d) => self::docSummary($d) + ['can_unlink' => (int) $d['owner_id'] === Auth::id()], $rows);
+    }
+
+    // ---------- export ----------
+
+    /** Download the whole doc: pdf (a print view to save as PDF), doc (Word), md or txt. */
+    public function export(string $org, string $doc, string $format): string
+    {
+        Access::org($org);
+        $d = $this->doc((int) $doc);
+        if (!in_array($format, ['pdf', 'doc', 'md', 'txt'], true)) {
+            abort(404);
+        }
+        $entries = DB::all('SELECT e.*, u.name AS author FROM notes_entries e JOIN users u ON u.id = e.author_id WHERE e.doc_id = ? ORDER BY e.meeting_at DESC, e.id DESC', [$d['id']]);
+        $ids = [];
+        foreach ($entries as $e) {
+            preg_match_all('/data-task="(\d+)"/', (string) $e['body'], $m);
+            array_push($ids, ...array_map('intval', $m[1]));
+        }
+        $export = new \App\Services\NotesExport($d, $entries, $this->chips(array_values(array_unique($ids))), self::linkedTask($d));
+        $name = slugify($d['title']) ?: 'meeting-notes';
+        header('X-Robots-Tag: noindex');
+        switch ($format) {
+            case 'pdf':
+                return $export->printView();
+            case 'doc':
+                header('Content-Type: application/msword; charset=utf-8');
+                header("Content-Disposition: attachment; filename=\"{$name}.doc\"");
+                return $export->word();
+            case 'md':
+                header('Content-Type: text/markdown; charset=utf-8');
+                header("Content-Disposition: attachment; filename=\"{$name}.md\"");
+                return $export->markdown();
+            default:
+                header('Content-Type: text/plain; charset=utf-8');
+                header("Content-Disposition: attachment; filename=\"{$name}.txt\"");
+                return $export->text();
+        }
+    }
+
     // ---------- helpers ----------
+
+    /** The task a doc is connected to, if it still exists and this member can see it. */
+    public static function linkedTask(array $d): ?array
+    {
+        if (empty($d['task_id'])) {
+            return null;
+        }
+        $t = DB::one('SELECT t.*, p.org_id, p.name AS project_name FROM tasks t JOIN projects p ON p.id = t.project_id WHERE t.id = ? AND t.deleted_at IS NULL', [(int) $d['task_id']]);
+        if (!$t || (int) $t['org_id'] !== (int) $d['org_id'] || !Access::canSeeProject((int) $t['project_id']) || $t['parent_id'] !== null) {
+            return null;
+        }
+        return $t;
+    }
+
+    private static function taskSummary(?array $t): ?array
+    {
+        return $t ? ['id' => (int) $t['id'], 'title' => $t['title'], 'project' => $t['project_name'], 'url' => url('/o/' . Access::$org['slug'] . '/p/' . $t['project_id'], ['task' => (int) $t['id']])] : null;
+    }
+
+    private static function docSummary(array $d): array
+    {
+        return ['id' => (int) $d['id'], 'title' => $d['title'], 'visibility' => $d['visibility'], 'url' => url('/o/' . Access::$org['slug'] . '/notes/' . $d['id'])];
+    }
+
+    /** A task docs can be connected to: one you can see, not a subtask, and you may use meeting notes. */
+    private function docTask(int $id): array
+    {
+        $t = Access::task($id);
+        Access::require('meeting_notes');
+        if ($t['parent_id'] !== null) {
+            abort(422, 'Connect the doc to the main task. Tasks made in it become its subtasks, and subtasks can’t have their own.');
+        }
+        return $t;
+    }
+
+    private static function logLink(array $d, int $taskId, bool $linked): void
+    {
+        if (DB::value('SELECT id FROM tasks WHERE id = ?', [$taskId])) {
+            Activity::log($taskId, $linked ? 'doc_linked' : 'doc_unlinked', null, $d['title']);
+        }
+    }
+
 
     /** A doc in the current org that the member can open (owner, or shared with the org). */
     private function doc(int $id, bool $ownerOnly = false): array

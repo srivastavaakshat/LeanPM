@@ -264,6 +264,12 @@ A permission change takes effect on the member's next page load. The member's pr
 - **Side panel:** lists *Tasks from this doc* (open first, done collapsed) with live stages, and *Meetings*, a list of earlier entries to jump to.
 - **Permission:** *Use meeting notes* is on for Admin, Lead, and Designer, and off for Viewer. Creating tasks still needs *Create tasks*.
 
+### 5.12a Meeting notes and tasks; export
+- **Connect a doc to a task** (optional). In a task's **Docs** section: **+ New doc** starts a doc named after the task (shared with the organization) and opens it; **Connect a doc** picks one of your own docs. A doc is connected to one task at a time, and only to a main task (not a subtask).
+- **While a doc is connected, tasks you create in it become subtasks of that task**, in its project. The doc shows a banner with a link to the task, and the task draft says “Subtask · ↳ task name”. Disconnect from the doc's Settings or with × in the task's Docs list (only the doc's creator can connect or disconnect it).
+- The task's history records connecting and disconnecting. The quick view lists connected docs, and the Meeting notes list shows each doc's task.
+- **Export** a whole doc from its Export menu: **PDF** (a clean print view: choose “Save as PDF”), **Word (.doc)**, **Markdown (.md)** or **plain text (.txt)**. Entries keep their headings, lists and links; task chips become checkboxes with each task's current stage and project.
+
 ### 5.13 All tasks and the Inbox
 - **All tasks** (sidebar) lists every task the member can see, grouped by project, with search, *Assigned to me*, *Hide done*, and *Show subtasks*.
   - The sidebar shows how many open tasks are waiting in the Inbox.
@@ -347,3 +353,4 @@ email when you're assigned a task · project-level files and links (not attached
 - **10 Nov 2026:** Owners are LeanPM-wide admins, not org members. Creating an organization no longer adds the owner; they can name its admin instead. More owners can be added. New tasks are assigned to their creator by default.
 - **10 Nov 2026:** A public landing page at `/` for visitors (why it exists, the main features, a link to build your own from GitHub). Signed-in people still go straight to their workspace. Logo and icon from Akshat's brand files (navy #14213D, lime #B7F34A).
 - **10 Nov 2026:** Keyboard-first: ⌘K palette with task search, the comment box focused when a task opens, arrow and Shift+arrow control on boards, a `?` shortcuts sheet and on-screen key hints. All tasks gets a Board view (columns are projects). Board columns look recessed so cards stand out.
+- **11 Nov 2026:** Meeting-notes docs can be connected to a task; tasks made in a connected doc become its subtasks. Docs export to PDF (print view), Word, Markdown and text.

@@ -225,7 +225,7 @@ if (isset($opts['seed'])) {
             }
         };
         $doc('Design stand-up', 'org', $web[0], [
-            [0, 10, 'Monday stand-up', '<p>Hero: direction B is the favourite. Tighten the product crop before Thursday.</p><p>' . $chip('Send the three hero options to the client') . '</p><p>Ravi’s mega menu is ready for review.</p><p>' . $chip('Navigation and mega menu') . '</p><p>Kabir is blocked on dark mode until the brand colours are final.</p><p>' . $chip('Dark mode token audit') . '</p>'],
+            [0, 10, 'Stand-up', '<p>Hero: direction B is the favourite. Tighten the product crop before Thursday.</p><p>' . $chip('Send the three hero options to the client') . '</p><p>Ravi’s mega menu is ready for review.</p><p>' . $chip('Navigation and mega menu') . '</p><p>Kabir is blocked on dark mode until the brand colours are final.</p><p>' . $chip('Dark mode token audit') . '</p>'],
             [7, 10, 'Weekly kickoff', '<p>Goals for the week: hero directions, pricing page, onboarding screens.</p><p>' . $chip('Homepage hero: three directions') . '</p><p>' . $chip('Onboarding flow: four screens') . '</p><p>Brand colours signed off by the client.</p><p>' . $chip('Colour palette: navy and lime') . '</p>'],
         ]);
         $doc('Weekly client call', 'private', null, [

@@ -71,6 +71,7 @@ $router->post('/o/{org}/notes', [App\Controllers\NotesController::class, 'store'
 $router->get('/o/{org}/notes/{doc}', [App\Controllers\NotesController::class, 'show']);
 $router->post('/o/{org}/notes/{doc}/settings', [App\Controllers\NotesController::class, 'update']);
 $router->post('/o/{org}/notes/{doc}/delete', [App\Controllers\NotesController::class, 'destroy']);
+$router->get('/o/{org}/notes/{doc}/export/{format}', [App\Controllers\NotesController::class, 'export']);
 
 // Members and permissions
 $router->get('/o/{org}/members', [MemberController::class, 'index']);
@@ -95,6 +96,10 @@ $router->post('/api/notes/entries/{entry}', [App\Controllers\NotesController::cl
 $router->post('/api/notes/entries/{entry}/delete', [App\Controllers\NotesController::class, 'deleteEntry'], ['api']);
 $router->post('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'createTask'], ['api']);
 $router->get('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'tasks'], ['api']);
+$router->post('/api/tasks/{task}/docs', [App\Controllers\NotesController::class, 'createForTask'], ['api']);
+$router->get('/api/tasks/{task}/docs/available', [App\Controllers\NotesController::class, 'availableForTask'], ['api']);
+$router->post('/api/tasks/{task}/docs/link', [App\Controllers\NotesController::class, 'linkToTask'], ['api']);
+$router->post('/api/tasks/{task}/docs/{doc}/unlink', [App\Controllers\NotesController::class, 'unlinkFromTask'], ['api']);
 $router->get('/api/o/{org}/search', [App\Controllers\SearchController::class, 'tasks'], ['api']);
 $router->get('/api/projects/{project}/tasks', [TaskApiController::class, 'index'], ['api']);
 $router->post('/api/projects/{project}/tasks', [TaskApiController::class, 'store'], ['api']);

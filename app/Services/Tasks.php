@@ -192,6 +192,9 @@ final class Tasks
         $data['url'] = url('/o/' . Access::$org['slug'] . '/p/' . $task['project_id'], ['task' => $id]);
         $data['field_defs'] = Fields::forProject((int) $task['project_id']);
         $data['can'] += ['comment' => Access::can('comment'), 'upload' => Access::can('upload'), 'create' => Access::can('create_tasks')];
+        // Meeting notes connected to this task (only main tasks can have them).
+        $data['can']['docs'] = Access::can('meeting_notes') && $task['parent_id'] === null;
+        $data['docs'] = $task['parent_id'] === null ? \App\Controllers\NotesController::docsForTask($id) : [];
         $data['parent'] = $task['parent_id'] ? DB::one('SELECT id, title FROM tasks WHERE id = ? AND deleted_at IS NULL', [$task['parent_id']]) : null;
         $data['subtask_list'] = self::serializeMany(DB::all('SELECT * FROM tasks WHERE parent_id = ? AND deleted_at IS NULL ORDER BY position, id', [$id]));
 

@@ -30,6 +30,8 @@ final class Activity
             'created'          => 'created this task',
             'imported'         => 'imported this task from a CSV',
             'from_notes'       => "created this task from the meeting notes “{$to}”",
+            'doc_linked'       => "connected the meeting notes “{$to}”",
+            'doc_unlinked'     => "disconnected the meeting notes “{$to}”",
             'moved_project'    => "moved this task from {$from} to {$to}",
             'status'           => "changed status from {$from} to {$to}",
             'title'            => "renamed this task to “{$to}”",

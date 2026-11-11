@@ -30,7 +30,7 @@ $base = '/o/' . $org['slug'] . '/notes';
           </span>
           <span class="doc-card-meta">
             <span class="tag"><?= $d['visibility'] === 'org' ? 'Shared' : 'Only you' ?></span>
-            <span class="muted small">Tasks → <?= e($d['default_project'] ?? 'Inbox') ?></span>
+            <?php if ($d['linked_task']): ?><span class="muted small">↳ <?= e($d['linked_task']) ?></span><?php else: ?><span class="muted small">Tasks → <?= e($d['default_project'] ?? 'Inbox') ?></span><?php endif; ?>
             <?php if ((int) $d['owner_id'] !== \App\Core\Auth::id()): ?><span class="muted small">by <?= e($d['owner_name']) ?></span><?php endif; ?>
           </span>
         </a>

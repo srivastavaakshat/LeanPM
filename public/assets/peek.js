@@ -244,7 +244,8 @@
       t.project.inbox && !t.parent ? h('p', { class: 'hint peek-hint' }, 'Not in a project yet. Pick one to put it on that board.') : null,
       show('fields') ? t.field_defs.map(f => row(f.name, fieldControl(t, f))) : null,
       row('Created', h('span', { class: 'muted small' }, fmtWhen(t.created_at), creator ? ` by ${creator.name}` : '')),
-      t.completed_at ? row('Completed', h('span', { class: 'muted small' }, fmtWhen(t.completed_at))) : null);
+      t.completed_at ? row('Completed', h('span', { class: 'muted small' }, fmtWhen(t.completed_at))) : null,
+      (t.docs || []).length ? row('Docs', h('span', { class: 'row-center wrap gap-s' }, t.docs.map(d => h('a', { class: 'chip', href: d.url }, d.title)))) : null);
 
     panel.replaceChildren(
       h('header', { class: 'peek-head' },

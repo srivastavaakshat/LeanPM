@@ -12,13 +12,31 @@ foreach ($projects as $p) { if ($p['id'] === $boot['doc']['default_project']) { 
     <div class="row-between notes-title-row">
       <h1><?= e($doc['title']) ?></h1>
       <div class="row-center gap-s">
+        <details class="export-menu">
+          <summary class="btn btn-sm">Export</summary>
+          <div class="menu popover">
+            <?php $ex = $base . '/' . $doc['id'] . '/export/'; ?>
+            <a href="<?= e(url($ex . 'pdf')) ?>" target="_blank" rel="noopener"><strong>PDF</strong><span class="muted small">Opens a print view: choose “Save as PDF”</span></a>
+            <a href="<?= e(url($ex . 'doc')) ?>"><strong>Word (.doc)</strong><span class="muted small">Opens in Word, Pages or Google Docs</span></a>
+            <a href="<?= e(url($ex . 'md')) ?>"><strong>Markdown (.md)</strong><span class="muted small">For Notion, Obsidian or GitHub</span></a>
+            <a href="<?= e(url($ex . 'txt')) ?>"><strong>Plain text (.txt)</strong><span class="muted small">Works everywhere</span></a>
+          </div>
+        </details>
         <?php if ($isOwner): ?><button type="button" class="btn btn-sm" data-open="doc-settings">Settings</button><?php endif; ?>
         <button type="button" class="btn btn-sm btn-primary" id="new-entry" title="Start another entry, e.g. a second meeting today">+ New entry</button>
       </div>
     </div>
+    <?php if ($linked): ?>
+      <div class="doc-linked">
+        <span class="doc-linked-icon" aria-hidden="true">↳</span>
+        <span>Connected to the task <a href="<?= e($linked['url']) ?>"><strong><?= e($linked['title']) ?></strong></a> <span class="muted">in <?= e($linked['project']) ?></span>. Tasks you create here become its subtasks.</span>
+      </div>
+    <?php endif; ?>
     <div class="notes-meta">
       <span class="tag"><?= $doc['visibility'] === 'org' ? 'Shared with ' . e($org['name']) : 'Only you' ?></span>
-      <?php if ($isOwner): ?>
+      <?php if ($linked): ?>
+        <span class="muted small">New tasks become subtasks of “<?= e($linked['title']) ?>”</span>
+      <?php elseif ($isOwner): ?>
         <form method="post" action="<?= e(url($base . '/' . $doc['id'] . '/settings')) ?>" class="row-center gap-s">
           <?= csrf_field() ?>
           <input type="hidden" name="title" value="<?= e($doc['title']) ?>">
@@ -47,7 +65,13 @@ foreach ($projects as $p) { if ($p['id'] === $boot['doc']['default_project']) { 
     <?= csrf_field() ?>
     <h2>Doc settings</h2>
     <label class="field"><span>Name</span><input name="title" value="<?= e($doc['title']) ?>" required maxlength="120"></label>
-    <label class="field"><span>New tasks go to</span>
+    <?php if ($linked): ?>
+      <div class="field"><span>Connected task</span>
+        <p class="hint" style="margin:0 0 6px">“<?= e($linked['title']) ?>”. Tasks created here become its subtasks.</p>
+        <label class="check"><input type="checkbox" name="unlink_task" value="1"> Disconnect from this task (new tasks go to the project below instead)</label>
+      </div>
+    <?php endif; ?>
+    <label class="field"><span><?= $linked ? 'When not connected, new tasks go to' : 'New tasks go to' ?></span>
       <select name="default_project"><?php foreach ($projects as $p): ?><option value="<?= (int) $p['id'] ?>" <?= $p['id'] === $boot['doc']['default_project'] ? 'selected' : '' ?>><?= $p['inbox'] ? 'Inbox (sort them into projects later)' : e($p['name']) ?></option><?php endforeach; ?></select>
     </label>
     <fieldset class="field"><legend>Who can see it</legend>
