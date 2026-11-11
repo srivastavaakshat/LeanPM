@@ -186,6 +186,10 @@ A permission change takes effect on the member's next page load. The member's pr
 - Only one level of nesting: a subtask can't have its own subtasks. This keeps the board and reports simple.
 - The parent task shows its subtasks' progress ("2 of 3 done").
 - The board shows parent tasks only, with a subtask count. A toggle shows subtasks as separate cards.
+- **On the board, by dragging:**
+  - Click a card's subtask count (or press S on it) to open its subtasks inside the card. Each one can be ticked done, opened, or dragged.
+  - Hold a card over the middle of another card and it shows "Make it a subtask". Drop it there and it becomes that card's subtask. Only main tasks without subtasks of their own can go under another main task, and you need edit rights on both.
+  - Drag a subtask out of its card into a column and it becomes a main task in that stage and place. Drop it on another card to move it under that one instead. Drop it back on its own card to cancel.
 
 ### 5.8 Comments
 - Post comments on a task as plain text with links. @mentions can come later.
@@ -279,12 +283,15 @@ A permission change takes effect on the member's next page load. The member's pr
   - Its stage is matched by name, otherwise by kind (not started / in progress / done), keeping its completed date.
   - Custom field values carry over to fields with the same name and type.
   - It's recorded in the task's history. A subtask moved on its own becomes a normal task.
+- **Bulk actions (list):** tick tasks (Shift+click ticks a range; X ticks the focused task; a group's header box ticks the whole group). A bar appears above the list with **Move to project…**, **Move to Trash**, and **Clear** (Esc).
+  - Each task is checked on the server on its own. Tasks you can't change are skipped, and the message says how many.
+  - Subtasks travel with their parent and aren't moved on their own.
 
 ### 5.14 Keyboard
 Everything can be done from the keyboard, and the app shows which keys work as you go.
 - **⌘K / Ctrl+K** (or `/`) opens a palette from any page: search tasks across every project you can open (recent ones show before you type), jump to any page or project, or run an action. ↑↓ to move, Enter to open. A task opens in place on its board or in the quick view, otherwise on its board.
 - **When a task opens, the cursor is in the comment box.** ⌘/Ctrl+Enter sends. Esc leaves the box; with nothing typed it closes the task and focus returns to its card.
-- **Board:** arrows move between cards, Enter opens, Shift+←/→ moves the card to the previous/next stage, N adds a task, B / L / F switch views. A hint pill at the bottom shows these while a card has focus.
+- **Board:** arrows move between cards, Enter opens, Shift+←/→ moves the card to the previous/next stage, S shows or hides the card's subtasks, N adds a task, B / L / F switch views. A hint pill at the bottom shows these while a card has focus.
 - **Anywhere:** G then A / N / M goes to All tasks / Meeting notes / Members; `[` collapses the sidebar; `?` shows every shortcut.
 - **All tasks** has a List and a Board view (B / L). On the board each project is a column, Inbox first; dragging a card (or Shift+←/→) moves the task to that project.
 

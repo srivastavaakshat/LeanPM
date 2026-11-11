@@ -226,6 +226,12 @@ final class TaskApiController
     {
         $t = Access::task((int) $task);
         Access::requireTask('delete_tasks', $t);
+        self::trash($t);
+        json_response(['ok' => true]);
+    }
+
+    private static function trash(array $t): void
+    {
         $at = now();
         DB::transaction(function () use ($t, $at) {
             DB::query('UPDATE tasks SET deleted_at = ?, deleted_by = ? WHERE parent_id = ? AND deleted_at IS NULL', [$at, Auth::id(), $t['id']]);
@@ -235,7 +241,73 @@ final class TaskApiController
                 Activity::log((int) $t['parent_id'], 'subtask_removed', $t['title']);
             }
         });
-        json_response(['ok' => true]);
+    }
+
+    /**
+     * All tasks: act on several tasks at once. Each task is checked on its own; the ones this
+     * member can't change (or that went away) are skipped and counted, not fatal.
+     */
+    public function bulk(string $org): never
+    {
+        $o = Access::org($org);
+        $in = json_input();
+        $action = (string) ($in['action'] ?? '');
+        $ids = array_slice(array_values(array_unique(array_map('intval', (array) ($in['task_ids'] ?? [])))), 0, 500);
+        if (!$ids || !in_array($action, ['project', 'trash'], true)) {
+            abort(422, 'Pick some tasks and an action.');
+        }
+        $target = null;
+        if ($action === 'project') {
+            Access::require('create_tasks');
+            $target = Access::project((int) ($in['project_id'] ?? 0));
+            if ((int) $target['archived']) {
+                abort(422, 'That project is archived.');
+            }
+        }
+        $done = [];
+        $skipped = 0;
+        foreach ($ids as $id) {
+            $t = DB::one('SELECT t.*, p.org_id FROM tasks t JOIN projects p ON p.id = t.project_id WHERE t.id = ?', [$id]);
+            if (!$t || (int) $t['org_id'] !== (int) $o['id'] || !Access::canSeeProject((int) $t['project_id'])) {
+                $skipped++;
+                continue;
+            }
+            // A subtask picked along with its parent goes wherever the parent goes (Trash included).
+            if ($t['parent_id'] !== null && in_array((int) $t['parent_id'], $ids, true)) {
+                continue;
+            }
+            if ($t['deleted_at'] !== null) {
+                $skipped++;
+                continue;
+            }
+            $t['assignee_ids'] = array_map('intval', array_column(DB::all('SELECT user_id FROM task_assignees WHERE task_id = ?', [$id]), 'user_id'));
+            if ($action === 'project') {
+                // Subtasks travel with their parent; a subtask picked on its own isn't moved.
+                if (!Access::canTask('edit_tasks', $t) || $t['parent_id'] !== null) {
+                    $skipped++;
+                    continue;
+                }
+                if ((int) $t['project_id'] !== (int) $target['id']) {
+                    Tasks::moveToProject($t, $target);
+                }
+            } else {
+                if (!Access::canTask('delete_tasks', $t)) {
+                    $skipped++;
+                    continue;
+                }
+                self::trash($t);
+            }
+            $done[] = $id;
+        }
+        $rows = $action === 'project' && $done
+            ? DB::all('SELECT * FROM tasks WHERE (id IN (' . DB::placeholders($done) . ') OR parent_id IN (' . DB::placeholders($done) . ')) AND deleted_at IS NULL', [...$done, ...$done])
+            : [];
+        json_response([
+            'done'     => $done,
+            'skipped'  => $skipped,
+            'tasks'    => Tasks::serializeMany($rows),
+            'statuses' => $target ? Tasks::statuses((int) $target['id']) : [],
+        ]);
     }
 
     /** Tasks that could become subtasks of this one: same project, top level, no subtasks of their own. */
@@ -263,11 +335,19 @@ final class TaskApiController
         $child = Access::task((int) (json_input()['task_id'] ?? 0));
         Access::requireTask('edit_tasks', $child);
         $hasChildren = DB::value('SELECT COUNT(*) FROM tasks WHERE parent_id = ? AND deleted_at IS NULL', [$child['id']]);
-        if ((int) $child['project_id'] !== (int) $parent['project_id'] || $parent['parent_id'] !== null || $child['parent_id'] !== null || $hasChildren || $child['id'] === $parent['id']) {
-            abort(422, 'Only top-level tasks without subtasks, from the same project, can be linked.');
+        if ((int) $child['project_id'] !== (int) $parent['project_id'] || $parent['parent_id'] !== null || $hasChildren || $child['id'] === $parent['id']) {
+            abort(422, 'Only tasks without subtasks of their own, from the same project, can become subtasks.');
         }
-        DB::transaction(function () use ($parent, $child) {
+        if ((int) $child['parent_id'] === (int) $parent['id']) {
+            json_response(['task' => Tasks::detail($parent)]);
+        }
+        // A subtask dropped on another task changes parent (dragged on the board).
+        $old = $child['parent_id'] !== null ? DB::one('SELECT id, title FROM tasks WHERE id = ?', [$child['parent_id']]) : null;
+        DB::transaction(function () use ($parent, $child, $old) {
             DB::update('tasks', ['parent_id' => $parent['id'], 'updated_at' => now()], 'id = ?', [$child['id']]);
+            if ($old) {
+                Activity::log((int) $old['id'], 'subtask_removed', $child['title']);
+            }
             Activity::log((int) $parent['id'], 'subtask_added', null, $child['title']);
             Activity::log((int) $child['id'], 'parent_set', null, $parent['title']);
         });

@@ -1031,3 +1031,59 @@ kbd + kbd { margin-left: 3px; }
 .export-menu .menu { right: 0; top: calc(100% + 6px); width: 290px; display: flex; flex-direction: column; }
 .export-menu .menu a { display: flex; flex-direction: column; padding: 9px 10px; border-radius: 10px; color: var(--text); text-decoration: none; }
 .export-menu .menu a:hover { background: rgba(20, 33, 61, .05); }
+
+/* All tasks: tick tasks, then act on them together from the bar above the list */
+.all-row { grid-template-columns: 22px 110px minmax(0, 1fr) 80px 80px 190px; }
+.all-check { display: grid; place-items: center; width: 22px; }
+.all-group-head { justify-content: flex-start; }
+.all-group-head > :last-child { margin-left: auto; }
+.all-tick { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.all-row .all-tick:not(:checked) { opacity: .35; transition: opacity .12s; }
+.all-row:hover .all-tick, .all-row .all-tick:focus-visible { opacity: 1; }
+.all-row.is-picked { background: rgba(183, 243, 74, .14); }
+.all-row.is-picked:hover { background: rgba(183, 243, 74, .2); }
+.bulk-bar { position: sticky; top: 12px; z-index: 30; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; padding: 8px 10px 8px 18px; border-radius: 999px; background: var(--accent); color: #fff; box-shadow: 0 18px 40px -18px rgba(20, 33, 61, .6), 0 0 0 4px rgba(183, 243, 74, .35); animation: pop-in .16s var(--ease); }
+.bulk-bar[hidden] { display: none; }
+.bulk-count { color: var(--lime); font-size: 14px; margin-right: 4px; }
+.bulk-bar .bulk-move { width: auto; min-width: 200px; height: 34px; border-radius: 999px; border: 0; background: #fff; color: var(--text); font-weight: 600; font-size: 13px; padding: 0 30px 0 14px; }
+.bulk-bar .btn { border-radius: 999px; height: 34px; }
+.bulk-bar .bulk-trash { background: rgba(255, 255, 255, .12); color: #fff; border-color: rgba(255, 255, 255, .25); }
+.bulk-bar .bulk-trash:hover { background: rgba(239, 68, 68, .9); border-color: transparent; }
+.bulk-bar .bulk-clear { margin-left: auto; color: #fff; background: none; border-color: transparent; }
+.bulk-bar .bulk-clear:hover { background: rgba(255, 255, 255, .12); }
+@media (max-width: 760px) {
+  .all-row { grid-template-columns: 22px 1fr auto; }
+  .all-row .all-stage, .all-move { grid-column: 2 / -1; }
+  .bulk-bar { border-radius: 18px; }
+  .bulk-bar .bulk-move { flex: 1; min-width: 0; }
+}
+
+/* Board: a card's subtasks open inside it; drop a card on a card to make it a subtask */
+.sub-toggle { display: inline-flex; align-items: center; gap: 3px; margin: -3px -6px; padding: 3px 6px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.sub-toggle:hover, .sub-toggle.is-open { background: rgba(20, 33, 61, .06); color: var(--text); }
+.sub-toggle .sub-chev { width: 11px !important; height: 11px !important; transition: transform .2s var(--ease); }
+.sub-toggle.is-open .sub-chev { transform: rotate(90deg); }
+.card-subs { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px -4px; padding-top: 6px; border-top: 1px solid var(--line-2); animation: subs-in .22s var(--ease); }
+@keyframes subs-in { from { opacity: 0; transform: translateY(-4px); } }
+.csub { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 6px; border-radius: 10px; font-size: 13px; cursor: pointer; transition: background .12s, opacity .15s; }
+.csub:hover { background: rgba(20, 33, 61, .05); }
+.csub:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+.csub.can-move { cursor: grab; touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; }
+.csub-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.csub.is-done .csub-title { color: var(--muted); text-decoration: line-through; }
+.csub-check { flex: none; display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1.5px solid var(--sc); background: #fff; color: transparent; cursor: pointer; transition: background .15s, color .15s; }
+.csub-check .i { width: 12px; height: 12px; stroke-width: 2.4; }
+.csub-check:hover:not(:disabled) { color: var(--sc); }
+.csub.is-done .csub-check { background: var(--sc); color: #fff; }
+.csub-check:disabled { cursor: default; }
+.csub .avatar.sm { width: 20px; height: 20px; font-size: 8.5px; }
+.csub.is-lifted-out { opacity: .3; }
+.csub.is-landed { animation: landed .9s var(--ease); }
+.tcard.is-home { box-shadow: 0 0 0 2px rgba(20, 33, 61, .18), 0 6px 16px -10px rgba(20, 33, 61, .22); }
+.tcard.is-nest-target { position: relative; transform: scale(1.02); box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px rgba(183, 243, 74, .55), 0 16px 30px -14px rgba(20, 33, 61, .4); }
+.tcard.is-nest-target::after { content: "↳ Make it a subtask"; position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%); padding: 4px 10px; border-radius: 999px; background: var(--accent); color: var(--lime); font-size: 11.5px; font-weight: 700; white-space: nowrap; box-shadow: 0 6px 14px -6px rgba(20, 33, 61, .5); animation: pop-in .14s var(--ease); z-index: 2; }
+.tcard.is-ghost { transition: box-shadow .2s var(--ease), scale .2s var(--ease), opacity .2s; }
+.tcard.is-ghost.is-nesting { scale: .86; opacity: .85; }
+.tcard.is-ghost.is-settling.is-nested { scale: .4; opacity: 0; transition: transform .3s var(--ease), scale .3s var(--ease), opacity .3s; }
+.drop-slot.is-idle { opacity: .35; }
+@media (prefers-reduced-motion: reduce) { .card-subs { animation: none; } .tcard.is-nest-target { transform: none; } }

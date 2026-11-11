@@ -215,6 +215,11 @@
       [['↵'], 'Open the card'],
       [['⇧', '←'], 'Move the card to the previous stage'],
       [['⇧', '→'], 'Move the card to the next stage'],
+      [['S'], 'Show or hide the card’s subtasks'],
+    ]],
+    ['All tasks', [
+      [['X'], 'Tick the focused task for bulk actions'],
+      [['esc'], 'Clear the ticked tasks'],
     ]],
     ['In a task', [
       [['mod', '↵'], 'Send the comment (the cursor starts in the comment box)'],

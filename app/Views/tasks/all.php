@@ -19,6 +19,7 @@
     <label class="toggle-pill"><input type="checkbox" id="a-hide-done" checked> Hide done</label>
     <label class="toggle-pill"><input type="checkbox" id="a-subtasks"> Show subtasks</label>
   </div>
+  <div id="all-bulk" class="bulk-bar" role="toolbar" aria-label="Selected tasks" hidden></div>
   <div id="all-groups"></div>
 </div>
 <script id="boot" type="application/json"><?= json_encode($boot, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>

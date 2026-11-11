@@ -20,6 +20,7 @@
     view: store.get(KEY + ':view') || 'board',
     sort: { key: 'position', dir: 1 },
     collapsed: new Set(JSON.parse(store.get(KEY + ':collapsed') || '[]')),
+    expanded: new Set(JSON.parse(store.get(KEY + ':expanded') || '[]')), // cards showing their subtasks
     filters: { q: '', assignees: [], priority: '', due: '', subtasks: store.get(KEY + ':subtasks') === '1', hideDone: store.get(KEY + ':hideDone') === '1' },
     openId: null,
     detail: null,
@@ -71,6 +72,7 @@
     user: '<circle cx="10" cy="7" r="3"/><path d="M4 17c1-3.5 3.5-5 6-5s5 1.5 6 5"/>',
     chev: '<path d="M7 5l5 5-5 5"/>',
     up: '<path d="M10 15V5M5 10l5-5 5 5"/>',
+    check: '<path d="M5.5 10.5l3 3 6-7"/>',
   };
 
   // ---------- custom fields ----------
@@ -305,7 +307,13 @@
     if (t.priority) meta.append(h('span', { class: 'chip', style: `--pc:${PRIORITY_COLORS[t.priority]}` }, svg(ICON.flag, 'i flag'), P[t.priority]));
     FIELDS.filter(f => f.type === 'url' && fieldVal(t, f)).forEach(f => meta.append(fieldLink(f, fieldVal(t, f))));
     const counts = h('div', { class: 'card-counts' });
-    if (t.subtasks) counts.append(h('span', { title: 'Subtasks' }, svg(ICON.sub), `${t.subtasks_done}/${t.subtasks}`));
+    const subs = t.parent_id ? [] : subtasksOf(t.id);
+    const open = subs.length > 0 && state.expanded.has(t.id);
+    if (subs.length) {
+      counts.append(h('button', { type: 'button', class: 'sub-toggle' + (open ? ' is-open' : ''), 'aria-expanded': String(open), title: (open ? 'Hide' : 'Show') + ' subtasks (S)',
+        onclick: e => { e.stopPropagation(); toggleSubs(t.id); } },
+      svg(ICON.sub), `${t.subtasks_done}/${t.subtasks}`, svg(ICON.chev, 'i sub-chev')));
+    } else if (t.subtasks) counts.append(h('span', { title: 'Subtasks' }, svg(ICON.sub), `${t.subtasks_done}/${t.subtasks}`));
     if (t.comments) counts.append(h('span', { title: 'Comments' }, svg(ICON.chat), t.comments));
     if (t.files) counts.append(h('span', { title: 'Files' }, svg(ICON.clip), t.files));
     const el = h('article', {
@@ -317,9 +325,60 @@
       parent ? h('div', { class: 'card-parent' }, svg(ICON.sub), parent.title) : null,
       h('div', { class: 'tcard-title' }, t.title),
       meta.children.length ? meta : null,
-      counts.children.length ? counts : null);
+      counts.children.length ? counts : null,
+      open ? h('div', { class: 'card-subs' }, subs.map(x => subRow(x, t))) : null);
     if (t.can.move) el.addEventListener('pointerdown', e => dragStart(e, t, el));
     return el;
+  }
+
+  // ---------- subtasks inside a card ----------
+  // The subtask count on a card opens a list of its subtasks right on the board. Each one can be
+  // ticked done, opened, or dragged out of the card to become a main task again.
+  const subtasksOf = id => state.tasks.filter(x => x.parent_id === id).sort((a, b) => a.position - b.position || a.id - b.id);
+  function toggleSubs(id, on = !state.expanded.has(id)) {
+    on ? state.expanded.add(id) : state.expanded.delete(id);
+    store.set(KEY + ':expanded', JSON.stringify([...state.expanded]));
+    const had = document.activeElement?.closest('.tcard')?.dataset.id;
+    render();
+    if (had) focusCard(+had);
+  }
+  /** Keep a parent's subtask counts right after a local change. */
+  function recount(id) {
+    const p = taskById(id);
+    if (!p) return;
+    const kids = subtasksOf(id);
+    p.subtasks = kids.length;
+    p.subtasks_done = kids.filter(isDone).length;
+  }
+  function subRow(x, parent) {
+    const done = isDone(x);
+    const st = statusById(x.status_id);
+    const row = h('div', {
+      class: 'csub' + (done ? ' is-done' : '') + (x.can.move ? ' can-move' : '') + (state.landed === x.id ? ' is-landed' : ''), tabindex: '0',
+      dataset: { id: x.id }, title: `${x.title} · ${st?.name || ''}`,
+      onclick: e => { e.stopPropagation(); openTask(x.id); },
+      onkeydown: e => { if (e.key === 'Enter') { e.stopPropagation(); openTask(x.id); } },
+    },
+      h('button', { type: 'button', class: 'csub-check', style: `--sc:${st?.color || '#999'}`, disabled: !x.can.move, 'aria-pressed': String(done),
+        title: done ? 'Mark not done' : 'Mark done', onclick: e => { e.stopPropagation(); toggleDone(x); } }, svg(ICON.check)),
+      h('span', { class: 'csub-title' }, x.title),
+      x.assignees.length ? avatars(x.assignees.slice(0, 2)) : null);
+    if (x.can.move && (x.can.edit || parent.can.edit)) row.addEventListener('pointerdown', e => { e.stopPropagation(); dragStart(e, x, row, parent); });
+    return row;
+  }
+  function toggleDone(x) {
+    const to = isDone(x) ? state.statuses.find(s => s.type === 'open') || state.statuses[0] : state.statuses.find(s => s.type === 'done');
+    if (!to) { toast('This project has no Done stage.', 'error'); return; }
+    const prev = x.status_id;
+    x.status_id = to.id;
+    recount(x.parent_id);
+    render();
+    api('POST', `/api/tasks/${x.id}`, { status_id: to.id }).then(d => {
+      upsert(d.task);
+      recount(x.parent_id);
+      if (state.openId === x.parent_id) refreshDetail();
+      render();
+    }).catch(() => { x.status_id = prev; reloadTasks(); });
   }
 
   // ---------- drag a card between stages ----------
@@ -329,10 +388,12 @@
   let drag = null;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  function dragStart(e, t, el) {
+  // Hold a card over the middle of another card and it drops in as that card's subtask; a subtask
+  // dragged out of its card (see subRow) lands in a column as a main task again.
+  function dragStart(e, t, el, parent = null) {
     if (e.button !== 0 || drag || e.target.closest('a, button, input, select')) return;
     const touch = e.pointerType !== 'mouse';
-    const d = drag = { t, el, id: t.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, pointerId: e.pointerId, tilt: 0, vx: 0 };
+    const d = drag = { t, el, parent, id: t.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, pointerId: e.pointerId, tilt: 0, vx: 0 };
     if (touch) d.hold = setTimeout(() => activate(d), 220);
     const move = ev => {
       if (ev.pointerId !== d.pointerId) return;
@@ -370,15 +431,28 @@
     d.active = true;
     const r = d.el.getBoundingClientRect();
     d.dx = d.x - r.left; d.dy = d.y - r.top;
-    d.from = d.el.parentElement;
-    d.slot = h('div', { class: 'drop-slot', style: `height:${r.height}px` });
-    d.ghost = d.el.cloneNode(true);
-    d.ghost.classList.add('is-ghost');
-    d.ghost.classList.remove('is-landed');
-    Object.assign(d.ghost.style, { width: r.width + 'px', left: '0px', top: '0px', transform: `translate(${r.left}px, ${r.top}px)` });
-    document.body.append(d.ghost);
-    d.el.replaceWith(d.slot);
+    if (d.parent) {
+      // A subtask lifted out of its card: it becomes a card-sized ghost, its row waits behind, faded.
+      d.home = d.el.closest('.tcard');
+      const w = d.home.getBoundingClientRect().width;
+      d.ghost = h('article', { class: 'tcard is-ghost' }, h('div', { class: 'card-parent' }, svg(ICON.sub), d.parent.title), h('div', { class: 'tcard-title' }, d.t.title));
+      d.dx = Math.min(d.dx, w - 24);
+      Object.assign(d.ghost.style, { width: w + 'px', left: '0px', top: '0px', transform: `translate(${d.x - d.dx}px, ${r.top}px)` });
+      document.body.append(d.ghost);
+      d.slot = h('div', { class: 'drop-slot', style: `height:${d.ghost.offsetHeight}px` });
+      d.el.classList.add('is-lifted-out');
+    } else {
+      d.from = d.el.parentElement;
+      d.slot = h('div', { class: 'drop-slot', style: `height:${r.height}px` });
+      d.ghost = d.el.cloneNode(true);
+      d.ghost.classList.add('is-ghost');
+      d.ghost.classList.remove('is-landed', 'is-nest-target');
+      Object.assign(d.ghost.style, { width: r.width + 'px', left: '0px', top: '0px', transform: `translate(${r.left}px, ${r.top}px)` });
+      document.body.append(d.ghost);
+      d.el.replaceWith(d.slot);
+    }
     document.body.classList.add('is-dragging-card');
+    window.LPMKeys?.showHint([[[], d.parent ? 'Drop in a column to make it a main task' : 'Hold over a card to make it a subtask'], [['esc'], 'cancel']]);
     if (navigator.userActivation?.isActive) navigator.vibrate?.(8);
     requestAnimationFrame(() => d.ghost.classList.add('is-lifted'));
     frame();
@@ -399,9 +473,44 @@
     });
   }
 
+  // A task can go under another one when both are main tasks and it has no subtasks of its own.
+  const canNest = (t, target) => target.id !== t.id && !target.parent_id && target.id !== t.parent_id
+    && !state.tasks.some(x => x.parent_id === t.id) && t.can.edit && target.can.edit;
+
+  function setNest(d, el = null, t = null) {
+    if (d.nestEl === el) return;
+    d.nestEl?.classList.remove('is-nest-target');
+    d.nestEl = el;
+    d.nest = t;
+    el?.classList.add('is-nest-target');
+    d.ghost.classList.toggle('is-nesting', !!el);
+    d.slot.classList.toggle('is-idle', !!el);
+  }
+
   function placeSlot(d) {
     const cols = [...document.querySelectorAll('.board .cards')];
     if (!cols.length) return;
+    const under = document.elementFromPoint(d.x, d.y)?.closest('.board .tcard');
+    // A subtask held over its own card goes back where it was.
+    if (d.parent && under === d.home) {
+      setNest(d);
+      d.home.classList.add('is-home');
+      if (d.slot.parentElement) flip([d.slot.parentElement], () => d.slot.remove());
+      return;
+    }
+    d.home?.classList.remove('is-home');
+    // Over the middle of a card that can take it: after a short hold, it becomes the drop target.
+    const ut = under && taskById(+under.dataset.id);
+    if (ut && canNest(d.t, ut)) {
+      const r = under.getBoundingClientRect(), edge = Math.min(22, r.height * 0.25);
+      if (d.y > r.top + edge && d.y < r.bottom - edge) {
+        if (d.nestCand !== ut.id) { d.nestCand = ut.id; d.nestAt = performance.now(); }
+        if (performance.now() - d.nestAt > 240) setNest(d, under, ut);
+        return; // the slot stays put while you decide
+      }
+    }
+    d.nestCand = null;
+    setNest(d);
     // The column under the pointer, else the nearest one horizontally.
     let target = cols.find(c => { const r = c.closest('.column').getBoundingClientRect(); return d.x >= r.left && d.x <= r.right; });
     if (!target) target = cols.reduce((best, c) => { const r = c.getBoundingClientRect(); const dist = Math.abs(d.x - (r.left + r.right) / 2); return !best || dist < best.dist ? { c, dist } : best; }, null).c;
@@ -409,7 +518,7 @@
     target.closest('.column').classList.add('is-target');
     const after = [...target.querySelectorAll('.tcard')].find(c => { const r = c.getBoundingClientRect(); return d.y < r.top + r.height / 2; });
     if (d.slot.parentElement === target && (after ? d.slot.nextElementSibling === after : d.slot === target.lastElementChild)) return;
-    flip([d.slot.parentElement, target], () => { if (after) target.insertBefore(d.slot, after); else target.append(d.slot); });
+    flip([d.slot.parentElement || target, target], () => { if (after) target.insertBefore(d.slot, after); else target.append(d.slot); });
   }
 
   // Animate cards from their old spots to their new ones when the slot moves (FLIP).
@@ -431,7 +540,7 @@
     const view = $('view'), r = view.getBoundingClientRect(), edge = 70;
     if (d.x < r.left + edge) view.scrollLeft -= (r.left + edge - d.x) / 4;
     else if (d.x > r.right - edge) view.scrollLeft += (d.x - (r.right - edge)) / 4;
-    const cards = d.slot.parentElement, cr = cards?.getBoundingClientRect();
+    const cards = d.slot.parentElement || d.nestEl?.parentElement, cr = cards?.getBoundingClientRect();
     if (cr && d.y < cr.top + 40) cards.scrollTop -= 8;
     else if (cr && d.y > cr.bottom - 40) cards.scrollTop += 8;
     placeSlot(d);
@@ -445,22 +554,33 @@
     setTimeout(() => removeEventListener('click', block, true), 0);
     clearInterval(d.scroller);
     cancelAnimationFrame(d.raf);
-    if (!commit) flip([d.slot.parentElement, d.from], () => d.from.append(d.slot));
+    window.LPMKeys?.hideHint();
+    d.home?.classList.remove('is-home');
+    const nest = commit ? d.nest : null, nestEl = d.nestEl;
+    const out = d.parent && commit && !nest && d.slot.parentElement; // a subtask dropped in a column
+    if (!commit && !d.parent) flip([d.slot.parentElement, d.from], () => d.from.append(d.slot));
+    if (!commit && d.parent && d.slot.parentElement) flip([d.slot.parentElement], () => d.slot.remove());
     const container = d.slot.parentElement;
-    const status = state.statuses.find(s => String(s.id) === container.dataset.status);
-    const sr = d.slot.getBoundingClientRect();
+    const status = container && state.statuses.find(s => String(s.id) === container.dataset.status);
+    // Where the subtask lands among the cards (the slot is removed before saving).
+    const order = out ? [...container.children].map(c => c === d.slot ? d.id : c.classList.contains('tcard') ? +c.dataset.id : 0).filter(Boolean) : null;
+    const to = (nest ? nestEl : d.parent && !out ? d.el : d.slot).getBoundingClientRect();
     d.ghost.classList.remove('is-lifted');
     d.ghost.classList.add('is-settling');
-    d.ghost.style.transform = `translate(${sr.left}px, ${sr.top}px)`;
+    if (nest) d.ghost.classList.add('is-nested');
+    d.ghost.style.transform = `translate(${nest ? to.left + to.width / 2 - d.ghost.offsetWidth / 2 : to.left}px, ${to.top}px)`;
     const done = () => {
       if (d.ended) return;
       d.ended = true;
       d.ghost.remove();
-      d.slot.replaceWith(d.el);
+      if (d.parent) { d.slot.remove(); d.el.classList.remove('is-lifted-out'); } else d.slot.replaceWith(d.el);
+      nestEl?.classList.remove('is-nest-target');
       document.querySelectorAll('.column.is-target').forEach(c => c.classList.remove('is-target'));
       document.body.classList.remove('is-dragging-card');
       drag = null;
-      if (commit && status) commitMove(container, status, d.id);
+      if (nest) nestUnder(d.t, nest);
+      else if (out && status) unnest(d.t, status, order);
+      else if (commit && status && !d.parent) commitMove(container, status, d.id);
       if (d.redraw) render();
     };
     d.ghost.addEventListener('transitionend', done, { once: true });
@@ -491,6 +611,51 @@
       Object.assign(t, prev);
       reloadTasks();
     });
+  }
+
+  function glow(id) {
+    state.landed = id;
+    setTimeout(() => { if (state.landed === id) { state.landed = null; document.querySelector(`[data-id="${id}"].is-landed`)?.classList.remove('is-landed'); } }, 900);
+  }
+
+  // Dropped on a card: it becomes that card's subtask, and the card opens to show it.
+  function nestUnder(t, parent) {
+    const old = t.parent_id;
+    t.parent_id = parent.id;
+    recount(parent.id);
+    if (old) recount(old);
+    state.expanded.add(parent.id);
+    store.set(KEY + ':expanded', JSON.stringify([...state.expanded]));
+    glow(t.id);
+    render();
+    api('POST', `/api/tasks/${parent.id}/subtasks/link`, { task_id: t.id }).then(data => {
+      upsert(data.task);
+      if ([t.id, parent.id, old].includes(state.openId)) refreshDetail();
+      toast(`“${t.title}” is now a subtask of “${parent.title}”`);
+      render();
+    }).catch(() => { t.parent_id = old; reloadTasks(); });
+  }
+
+  // A subtask dragged out of its card: a main task again, in the column and place it was dropped.
+  function unnest(t, status, order) {
+    const old = t.parent_id;
+    const hidden = state.tasks.filter(x => x.status_id === status.id && !order.includes(x.id)).sort((a, b) => a.position - b.position).map(x => x.id);
+    order = [...order, ...hidden];
+    t.parent_id = null;
+    t.status_id = status.id;
+    order.forEach((id, i) => { const x = taskById(id); if (x) x.position = i; });
+    recount(old);
+    glow(t.id);
+    render();
+    api('POST', `/api/tasks/${t.id}/detach`)
+      .then(() => api('POST', `/api/tasks/${t.id}/move`, { status_id: status.id, order }))
+      .then(data => {
+        upsert(data.task);
+        recount(old);
+        if ([t.id, old].includes(state.openId)) refreshDetail();
+        toast(`“${t.title}” is a main task again`);
+        render();
+      }).catch(() => reloadTasks());
   }
 
   function addTaskButton(status, parentId = null) {
@@ -843,6 +1008,11 @@
       return;
     }
     const k = e.key.toLowerCase();
+    if (k === 's' && card && !e.shiftKey) {
+      const t = taskById(+card.dataset.id);
+      if (t && subtasksOf(t.id).length) { e.preventDefault(); toggleSubs(t.id); }
+      return;
+    }
     if (k === 'n' && !e.shiftKey) { e.preventDefault(); newTask(); }
     else if (['b', 'l', 'f'].includes(k) && !e.shiftKey) {
       e.preventDefault();
@@ -861,7 +1031,8 @@
   document.addEventListener('focusin', e => {
     const card = e.target.closest?.('.tcard');
     if (!card || !window.LPMKeys || !card.matches(':focus-visible')) return;
-    window.LPMKeys.showHint([[['←', '→', '↑', '↓'], 'move'], [['↵'], 'open'], ...(card.classList.contains('can-move') ? [[['⇧', '←', '→'], 'change stage']] : []), [['N'], 'new task']]);
+    window.LPMKeys.showHint([[['←', '→', '↑', '↓'], 'move'], [['↵'], 'open'], ...(card.classList.contains('can-move') ? [[['⇧', '←', '→'], 'change stage']] : []),
+      ...(card.querySelector('.sub-toggle') ? [[['S'], 'subtasks']] : []), [['N'], 'new task']]);
   });
   document.addEventListener('focusout', e => { if (e.target.closest?.('.tcard')) window.LPMKeys?.hideHint(150); });
 

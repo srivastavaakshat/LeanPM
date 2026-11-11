@@ -101,6 +101,7 @@ $router->get('/api/tasks/{task}/docs/available', [App\Controllers\NotesControlle
 $router->post('/api/tasks/{task}/docs/link', [App\Controllers\NotesController::class, 'linkToTask'], ['api']);
 $router->post('/api/tasks/{task}/docs/{doc}/unlink', [App\Controllers\NotesController::class, 'unlinkFromTask'], ['api']);
 $router->get('/api/o/{org}/search', [App\Controllers\SearchController::class, 'tasks'], ['api']);
+$router->post('/api/o/{org}/tasks/bulk', [TaskApiController::class, 'bulk'], ['api']);
 $router->get('/api/projects/{project}/tasks', [TaskApiController::class, 'index'], ['api']);
 $router->post('/api/projects/{project}/tasks', [TaskApiController::class, 'store'], ['api']);
 $router->get('/api/projects/{project}/files', [TaskApiController::class, 'files'], ['api']);
