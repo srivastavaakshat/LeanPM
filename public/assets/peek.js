@@ -377,17 +377,14 @@
 
   function filesSection(t) {
     const input = h('input', { type: 'file', multiple: true, hidden: true, onchange: e => { toast('Uploading…'); upload(t, e.target.files); } });
-    const zone = h('div', {
-      class: 'peek-drop',
-      ondragover: e => { if (t.can.upload && e.dataTransfer.types.includes('Files')) { e.preventDefault(); zone.classList.add('is-over'); } },
-      ondragleave: () => zone.classList.remove('is-over'),
-      ondrop: e => { e.preventDefault(); zone.classList.remove('is-over'); if (t.can.upload) { toast('Uploading…'); upload(t, e.dataTransfer.files); } },
-    },
+    const zone = h('div', { class: 'peek-drop' },
       t.attachments.length ? h('div', { class: 'files' }, t.attachments.map(fileTile)) : null,
       t.can.upload ? h('button', { type: 'button', class: 'peek-drop-btn', onclick: () => input.click() }, svg(ICON.clip),
         t.attachments.length ? 'Add files' : `Drop files here or click to upload (up to ${boot.maxUpload || 25} MB each)`) : (t.attachments.length ? null : h('p', { class: 'muted small' }, 'No files.')),
       input);
-    return section('Files', zone);
+    const sec = section('Files', zone);
+    if (t.can.upload) window.LPMDrop?.(sec, 'Drop to add to Files', list => { toast('Uploading…'); upload(t, list); });
+    return sec;
   }
 
   function updatesSection(t, draft) {
@@ -404,11 +401,13 @@
     const files = h('input', { type: 'file', multiple: true, hidden: true });
     const chosen = h('div', { class: 'chosen-files' });
     files.addEventListener('change', () => chosen.replaceChildren(...[...files.files].map(f => h('span', { class: 'chip' }, f.name))));
-    const send = async () => {
-      if (!box.value.trim() && !files.files.length) return;
+    const send = async (dropped = []) => {
+      const list = [...files.files, ...dropped];
+      if (!box.value.trim() && !list.length) return;
       const text = box.value;
       box.value = '';
-      const d = await upload(t, files.files, `/api/tasks/${t.id}/comments`, { body: text });
+      if (dropped.length) toast('Uploading…');
+      const d = await upload(t, list, `/api/tasks/${t.id}/comments`, { body: text });
       if (!d) box.value = text;
       else { const nb = panel?.querySelector('.peek-body'); if (nb) nb.scrollTop = nb.scrollHeight; }
     };
@@ -417,12 +416,15 @@
       // Esc leaves the box; with nothing typed it closes the panel in one go.
       else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (box.value.trim()) box.blur(); else close(); }
     });
-    return section('Updates', feed,
+    const sec = section('Updates', feed,
       h('div', { class: 'peek-comment' }, box, chosen,
         h('div', { class: 'row-between' },
-          t.can.upload ? h('button', { type: 'button', class: 'icon-btn', title: 'Attach files', onclick: () => files.click() }, svg(ICON.clip)) : h('span'),
-          h('button', { type: 'button', class: 'btn btn-sm btn-primary', onclick: send }, 'Add update')),
+          t.can.upload ? h('button', { type: 'button', class: 'icon-btn', title: 'Attach files (or drop them here)', onclick: () => files.click() }, svg(ICON.clip)) : h('span'),
+          h('button', { type: 'button', class: 'btn btn-sm btn-primary', onclick: () => send() }, 'Add update')),
         files));
+    // Drop files on the updates to post them as an update (with anything already typed).
+    if (t.can.upload) window.LPMDrop?.(sec, 'Drop to post as an update', list => send([...list]));
+    return sec;
   }
 
   window.LPM = { boot, members, h, svg, ICON, api, toast, fmtDate, fmtTime, fmtWhen, isOverdue, avatar, avatars, today, peek: { open, close } };

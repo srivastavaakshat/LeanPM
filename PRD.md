@@ -200,7 +200,7 @@ A permission change takes effect on the member's next page load. The member's pr
 - Each person can turn mention emails off under Your account.
 
 ### 5.9 Attachments
-- Upload files to a task or to a comment by drag-and-drop or the file picker.
+- Upload files to a task or to a comment by drag-and-drop or the file picker. Drop files anywhere on the left of a task to add them to its Files; drop them on the activity side to post them as a comment straight away (with anything already typed). The area lights up and says what will happen. The quick view works the same way, and a file dropped anywhere else never makes the browser leave the page.
 - Files are stored on the Hostinger server, not a third-party service.
 - Image previews; other files show as a download link.
 - Size limit per file can be configured (default 25 MB).

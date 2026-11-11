@@ -1041,9 +1041,11 @@
         h('h3', {}, 'Subtasks', t.subtasks ? h('span', { class: 'muted' }, ` ${t.subtasks_done}/${t.subtasks} done`) : null),
         t.subtasks ? h('div', { class: 'progress' }, h('span', { style: `width:${Math.round(t.subtasks_done / t.subtasks * 100)}%` })) : null,
         subs, subActions) : null,
-      h('div', { class: 'section dropzone', ondragover: e => { if (boot.can.upload && e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.currentTarget.classList.add('is-over'); } }, ondragleave: e => e.currentTarget.classList.remove('is-over'), ondrop: e => { e.preventDefault(); e.currentTarget.classList.remove('is-over'); if (boot.can.upload) uploadFiles(t.id, e.dataTransfer.files); } },
-        h('h3', {}, 'Files'), files.children.length ? files : h('p', { class: 'muted small' }, boot.can.upload ? 'Drop files here or upload. Up to ' + boot.maxUpload + ' MB each.' : 'No files.'),
+      h('div', { class: 'section' },
+        h('h3', {}, 'Files'), files.children.length ? files : h('p', { class: 'muted small' }, boot.can.upload ? 'Drop files anywhere on this side, or upload. Up to ' + boot.maxUpload + ' MB each.' : 'No files.'),
         uploadBtn, fileInput));
+    // Drop files anywhere on the left to add them to the task's files.
+    if (boot.can.upload) window.LPMDrop?.(left, 'Drop to add to Files', list => uploadFiles(t.id, list));
 
     // activity + comments
     const feed = h('div', { class: 'feed' });
@@ -1052,6 +1054,8 @@
       h('time', {}, fmtWhen(item.at)))));
     const box = boot.can.comment ? commentBox(t, draft) : h('p', { class: 'muted small pad' }, 'You can’t comment on tasks.');
     const right = h('div', { class: 'drawer-side' }, h('h3', { class: 'side-title' }, 'Activity'), feed, box);
+    // Drop files on the activity side to post them as a comment (with anything already typed).
+    if (boot.can.comment && boot.can.upload && box.sendFiles) window.LPMDrop?.(right, 'Drop to post as a comment', box.sendFiles);
 
     drawer.replaceChildren(head, h('div', { class: 'drawer-body' }, left, right));
     if (keepScroll !== undefined) feed.scrollTop = keepScroll; else feed.scrollTop = feed.scrollHeight;
@@ -1154,15 +1158,17 @@
     fileInput.addEventListener('change', () => {
       chosen.replaceChildren(...[...fileInput.files].map(f => h('span', { class: 'chip' }, svg(ICON.clip), f.name)));
     });
-    const send = async () => {
-      if (!ta.value.trim() && !fileInput.files.length) return;
+    const send = async (dropped = []) => {
+      const list = [...fileInput.files, ...dropped];
+      if (!ta.value.trim() && !list.length) return;
       const fd = new FormData();
       fd.append('body', ta.value);
-      for (const f of fileInput.files) {
+      for (const f of list) {
         if (f.size > boot.maxUpload * 1048576) { toast(`${f.name} is over ${boot.maxUpload} MB.`, 'error'); return; }
         fd.append('files[]', f);
       }
       sendBtn.disabled = true;
+      if (dropped.length) toast('Uploading…');
       try {
         const d = await api('POST', `/api/tasks/${t.id}/comments`, fd);
         ta.value = '';
@@ -1180,12 +1186,14 @@
       // Esc leaves the comment box; with nothing typed it closes the task in one go.
       else if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); if (ta.value.trim()) ta.blur(); else closeTask(); }
     });
-    const sendBtn = h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: send, title: `${mod}+Enter` }, 'Comment', h('kbd', { class: 'btn-kbd' }, `${mod === '⌘' ? '⌘' : 'Ctrl'}↵`));
-    return h('div', { class: 'comment-box' }, ta, chosen,
+    const sendBtn = h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => send(), title: `${mod}+Enter` }, 'Comment', h('kbd', { class: 'btn-kbd' }, `${mod === '⌘' ? '⌘' : 'Ctrl'}↵`));
+    const box = h('div', { class: 'comment-box' }, ta, chosen,
       h('div', { class: 'row-between' },
-        boot.can.upload ? h('button', { type: 'button', class: 'icon-btn', title: 'Attach files', onclick: () => fileInput.click() }, svg(ICON.clip)) : h('span'),
+        boot.can.upload ? h('button', { type: 'button', class: 'icon-btn', title: 'Attach files (or drop them here)', onclick: () => fileInput.click() }, svg(ICON.clip)) : h('span'),
         sendBtn),
       fileInput);
+    box.sendFiles = list => send([...list]);
+    return box;
   }
 
   function linkPicker(anchor, t) {

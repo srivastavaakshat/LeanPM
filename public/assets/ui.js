@@ -77,3 +77,38 @@ document.querySelectorAll('[data-autohide]').forEach(el => setTimeout(() => el.c
   sidebar.addEventListener('click', hide);
   sidebar.querySelector('.side-nav')?.addEventListener('scroll', hide);
 })();
+
+// Drop files onto an area to upload them, no button needed. While files are over the area it
+// lights up and a label says what will happen. Used by the task panel and the quick view.
+(() => {
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  window.LPMDrop = (el, label, onFiles) => {
+    let depth = 0, tag = null;
+    const on = () => {
+      el.classList.add('is-drop-over');
+      if (tag) return;
+      const r = el.getBoundingClientRect();
+      const top = Math.max(r.top, 0), bottom = Math.min(r.bottom, innerHeight);
+      tag = document.createElement('div');
+      tag.className = 'drop-label';
+      tag.textContent = label;
+      tag.style.left = r.left + r.width / 2 + 'px';
+      tag.style.top = (top + bottom) / 2 + 'px';
+      document.body.append(tag);
+    };
+    const off = () => { depth = 0; el.classList.remove('is-drop-over'); tag?.remove(); tag = null; };
+    el.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); depth++; on(); });
+    el.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; on(); });
+    el.addEventListener('dragleave', e => { if (hasFiles(e) && --depth <= 0) off(); });
+    el.addEventListener('drop', e => {
+      if (!hasFiles(e)) return;
+      e.preventDefault(); e.stopPropagation(); off();
+      if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files);
+    });
+  };
+  // A file dropped anywhere else shouldn't make the browser open it and leave the page
+  // (file inputs, like the CSV import, still take drops as usual).
+  for (const type of ['dragover', 'drop']) {
+    addEventListener(type, e => { if (hasFiles(e) && !e.target.closest?.('input[type=file]')) e.preventDefault(); });
+  }
+})();
