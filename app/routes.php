@@ -89,6 +89,7 @@ $router->get('/o/{org}/export/comments.csv', [ExportController::class, 'comments
 
 // Files (members of the task's organization only)
 $router->get('/files/{file}', [FileController::class, 'show']);
+$router->get('/files/{file}/view', [FileController::class, 'view']);
 
 // JSON API used by the board, list and task panel
 $router->post('/api/notes/{doc}/entries', [App\Controllers\NotesController::class, 'createEntry'], ['api']);

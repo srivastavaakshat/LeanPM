@@ -237,7 +237,9 @@ final class Tasks
             'name'       => $f['file_name'],
             'size'       => human_size((int) $f['size']),
             'image'      => Uploads::isImage($f['mime']),
-            'url'        => url('/files/' . $f['id']),
+            'html'       => Uploads::isHtml($f),
+            // HTML opens in the sandboxed viewer; everything else opens or downloads directly.
+            'url'        => url('/files/' . $f['id'] . (Uploads::isHtml($f) ? '/view' : '')),
             'user_id'    => (int) $f['user_id'],
             'can_delete' => (int) $f['user_id'] === Auth::id() || Access::can('moderate'),
         ];

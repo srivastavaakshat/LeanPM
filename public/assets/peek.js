@@ -352,7 +352,7 @@
     const ext = (f.name.split('.').pop() || 'file').slice(0, 4).toUpperCase();
     return h('div', { class: 'file' },
       h('a', { href: f.url, target: '_blank', rel: 'noopener', class: 'file-link' },
-        f.image ? h('img', { src: f.url, alt: '', loading: 'lazy' }) : h('span', { class: 'file-ext' }, ext),
+        f.image ? h('img', { src: f.url, alt: '', loading: 'lazy' }) : h('span', { class: 'file-ext' + (f.html ? ' is-html' : ''), title: f.html ? 'Opens in a sandboxed preview' : null }, ext),
         h('span', { class: 'file-name', title: f.name }, f.name), h('span', { class: 'muted small' }, f.size)),
       f.can_delete ? h('button', { type: 'button', class: 'icon-btn small file-del', title: 'Delete file', onclick: async () => {
         if (!confirm(`Delete ${f.name}?`)) return;

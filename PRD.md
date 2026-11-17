@@ -204,6 +204,7 @@ A permission change takes effect on the member's next page load. The member's pr
 - Each person can turn mention emails off under Your account.
 
 ### 5.9 Attachments
+- **HTML files** (.html, .htm) can be attached to tasks and comments like any file. Clicking one opens a viewer: a LeanPM bar (file name, task, who added it, Reload, Download) above the page in a sandboxed frame. The page's scripts run, but it gets an origin of its own: it can't read LeanPM's cookies, storage or pages, or call the API as the user. Opened directly, the file redirects to the viewer.
 - Upload files to a task or to a comment by drag-and-drop or the file picker. Drop files anywhere on the left of a task to add them to its Files; drop them on the activity side to post them as a comment straight away (with anything already typed). The area lights up and says what will happen. The quick view works the same way, and a file dropped anywhere else never makes the browser leave the page.
 - Files are stored on the Hostinger server, not a third-party service.
 - Image previews; other files show as a download link.

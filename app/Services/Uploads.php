@@ -9,8 +9,9 @@ use App\Core\Database as DB;
 /** Task and comment files, stored outside the web root and served only to members. */
 final class Uploads
 {
-    // Never store anything a browser or the server could run.
-    private const BLOCKED_EXT = ['php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'pht', 'cgi', 'pl', 'py', 'sh', 'exe', 'bat', 'cmd', 'com', 'js', 'mjs', 'htaccess', 'html', 'htm', 'shtml', 'xhtml', 'svgz'];
+    // Never store anything the server could run. HTML pages are allowed, but only ever shown inside a
+    // sandboxed viewer (FileController), where they can't reach the app or the signed-in session.
+    private const BLOCKED_EXT = ['php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'pht', 'cgi', 'pl', 'py', 'sh', 'exe', 'bat', 'cmd', 'com', 'js', 'mjs', 'htaccess', 'shtml', 'xhtml', 'svgz'];
 
     public static function dir(int $orgId, int $taskId): string
     {
@@ -90,6 +91,12 @@ final class Uploads
             @unlink($path);
         }
         DB::query('DELETE FROM attachments WHERE id = ?', [$attachment['id']]);
+    }
+
+    /** An HTML page (by its name, whatever finfo made of it). */
+    public static function isHtml(array $attachment): bool
+    {
+        return in_array(strtolower(pathinfo((string) $attachment['file_name'], PATHINFO_EXTENSION)), ['html', 'htm'], true);
     }
 
     public static function isImage(string $mime): bool

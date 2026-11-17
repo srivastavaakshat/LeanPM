@@ -858,7 +858,7 @@
       const ext = extOf(f.name);
       grid.append(h('div', { class: 'doc' },
         h('a', { href: f.url, target: '_blank', rel: 'noopener', class: 'doc-thumb', title: 'Open ' + f.name },
-          f.image ? h('img', { src: f.url, alt: '', loading: 'lazy' }) : h('span', { class: `file-ext kind-${kindOf(f)}` }, (ext || 'file').slice(0, 5).toUpperCase())),
+          f.image ? h('img', { src: f.url, alt: '', loading: 'lazy' }) : h('span', { class: `file-ext kind-${kindOf(f)}${f.html ? ' is-html' : ''}` }, (ext || 'file').slice(0, 5).toUpperCase())),
         h('div', { class: 'doc-info' },
           h('a', { href: f.url, target: '_blank', rel: 'noopener', class: 'doc-name', title: f.name }, f.name),
           h('div', { class: 'muted small' }, `${f.size} · ${fmtDate(f.created_at)} · ${f.user_name}`),
@@ -1265,8 +1265,8 @@
   function fileTile(f) {
     return h('div', { class: 'file' },
       h('a', { href: f.url, target: '_blank', rel: 'noopener', class: 'file-link' },
-        f.image ? h('img', { src: f.url, alt: '', loading: 'lazy' }) : h('span', { class: 'file-ext' }, (f.name.split('.').pop() || 'file').slice(0, 4).toUpperCase()),
-        h('span', { class: 'file-name', title: f.name }, f.name),
+        f.image ? h('img', { src: f.url, alt: '', loading: 'lazy' }) : h('span', { class: 'file-ext' + (f.html ? ' is-html' : ''), title: f.html ? 'Opens in a sandboxed preview' : null }, (f.name.split('.').pop() || 'file').slice(0, 4).toUpperCase()),
+        h('span', { class: 'file-name', title: f.html ? `${f.name} (click to open the page)` : f.name }, f.name),
         h('span', { class: 'muted small' }, f.size)),
       f.can_delete ? h('button', {
         type: 'button', class: 'icon-btn small file-del', title: 'Delete file',
