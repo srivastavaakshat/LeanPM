@@ -18,13 +18,29 @@ final class Notifications
 {
     public const TYPES = ['mention', 'comment', 'assigned', 'done'];
 
+    private static ?bool $ready = null;
+
+    /** False until migration 008 has run, so a deploy before the migration never takes the site down. */
+    public static function ready(): bool
+    {
+        if (self::$ready === null) {
+            try {
+                DB::one('SELECT id FROM notifications LIMIT 1');
+                self::$ready = true;
+            } catch (\Throwable) {
+                self::$ready = false;
+            }
+        }
+        return self::$ready;
+    }
+
     /** Notify $userIds about $task. Returns the ids actually notified. */
     public static function send(array $task, array $userIds, string $type, ?int $commentId = null, ?string $excerpt = null): array
     {
         $actor = Auth::id();
         $orgId = (int) (Access::$org['id'] ?? 0);
         $userIds = array_values(array_diff(array_unique(array_map('intval', $userIds)), [$actor]));
-        if (!$userIds || !$orgId) {
+        if (!$userIds || !$orgId || !self::ready()) {
             return [];
         }
         $allowed = Mentions::candidates($orgId, (int) $task['project_id']);
@@ -59,7 +75,7 @@ final class Notifications
     /** Unread count for the sidebar badge (only tasks you can still open). */
     public static function unread(): int
     {
-        if (!Access::$org) {
+        if (!Access::$org || !self::ready()) {
             return 0;
         }
         return count(array_filter(self::rows(onlyUnread: true, limit: 100)));
@@ -68,6 +84,9 @@ final class Notifications
     /** Your notifications in the current org, newest first, for tasks you can still open. */
     public static function rows(bool $onlyUnread = false, int $limit = 200): array
     {
+        if (!self::ready()) {
+            return [];
+        }
         $rows = DB::all(
             'SELECT n.*, t.title AS task_title, t.project_id, t.parent_id, t.status_id, p.name AS project_name, p.is_inbox,
                     s.name AS status_name, s.color AS status_color, s.type AS status_type,
@@ -87,6 +106,9 @@ final class Notifications
     /** Opening a task counts as seeing what happened on it. */
     public static function readTask(int $taskId): void
     {
+        if (!self::ready()) {
+            return;
+        }
         DB::query('UPDATE notifications SET read_at = ? WHERE user_id = ? AND task_id = ? AND read_at IS NULL', [now(), Auth::id(), $taskId]);
     }
 }

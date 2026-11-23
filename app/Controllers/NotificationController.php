@@ -42,6 +42,9 @@ final class NotificationController
     public function read(string $org): never
     {
         $o = Access::org($org);
+        if (!Notifications::ready()) {
+            json_response(['unread' => 0]);
+        }
         $in = json_input();
         $read = ($in['read'] ?? true) !== false;
         $where = 'user_id = ? AND org_id = ?';
