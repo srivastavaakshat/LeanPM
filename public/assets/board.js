@@ -915,6 +915,10 @@
       renderDrawer();
       // The cursor waits in the comment box, so you can type an update straight away.
       drawer.querySelector('.comment-box textarea')?.focus({ preventScroll: true });
+      // A link to a comment (…&comment=ID, e.g. from a notification): scroll to it and light it up.
+      const cid = new URL(location.href).searchParams.get('comment');
+      const c = cid && drawer.querySelector(`.comment[data-comment="${CSS.escape(cid)}"]`);
+      if (c) { c.scrollIntoView({ block: 'center' }); c.classList.add('is-flash'); setTimeout(() => c.classList.remove('is-flash'), 2400); }
     } catch {
       closeTask();
     }
@@ -1314,7 +1318,7 @@
         state.detail = d.task; upsert(d.task); renderDrawer(); render();
       },
     }, 'Delete'));
-    return h('div', { class: 'comment' },
+    return h('div', { class: 'comment', dataset: { comment: c.id } },
       h('div', { class: 'comment-head' }, avatar(c.user_id, 'sm'), h('strong', {}, who?.name || 'Former member'), h('time', {}, fmtWhen(c.at)), c.edited ? h('span', { class: 'muted small' }, '(edited)') : null),
       body,
       c.files.length ? h('div', { class: 'files compact' }, c.files.map(fileTile)) : null,

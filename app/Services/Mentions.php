@@ -63,12 +63,13 @@ final class Mentions
     }
 
     /**
-     * Email everyone in $userIds (except the author and anyone who turned it off) and note it in
-     * the task's history. $where: 'comment' | 'description'.
+     * Notify everyone in $userIds in the app, email them (except the author and anyone who turned
+     * it off) and note it in the task's history. $where: 'comment' | 'description'.
      */
-    public static function notify(array $task, array $userIds, string $where, string $excerpt, array $candidates): void
+    public static function notify(array $task, array $userIds, string $where, string $excerpt, array $candidates, ?int $commentId = null): void
     {
         $me = Auth::user();
+        Notifications::send($task, $userIds, 'mention', $commentId, $excerpt);
         $org = Access::$org;
         $project = DB::one('SELECT name FROM projects WHERE id = ?', [$task['project_id']]);
         $url = absolute_url("/o/{$org['slug']}/p/{$task['project_id']}", ['task' => $task['id']]);

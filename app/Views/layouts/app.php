@@ -59,6 +59,12 @@ $active = fn (string $p) => $path === $p || str_starts_with($path, $p . '/') ? '
         <span class="label">Search</span>
         <kbd class="label kbd-mod" data-kbd="mod+k">⌘K</kbd>
       </button>
+      <?php $unread = \App\Services\Notifications::unread(); ?>
+      <a href="<?= e(url($base . '/notifications')) ?>" class="side-link<?= $active($base . '/notifications') ?>" data-tip="Notifications (G I)" aria-label="Notifications<?= $unread ? ", {$unread} unread" : '' ?>" data-notif-link>
+        <svg class="i" viewBox="0 0 20 20"><path d="M5.5 8.5a4.5 4.5 0 019 0c0 3.2 1.2 4.6 1.8 5.2.2.2.1.6-.2.6H3.9c-.3 0-.4-.4-.2-.6.6-.6 1.8-2 1.8-5.2z"/><path d="M8.2 16.5a2 2 0 003.6 0"/></svg>
+        <span class="label">Notifications</span>
+        <span class="side-badge notif-badge" data-notif-badge<?= $unread ? '' : ' hidden' ?>><?= $unread > 99 ? '99+' : $unread ?></span>
+      </a>
       <?php $inboxOpen = (int) \App\Core\Database::value("SELECT COUNT(*) FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.project_id = ? AND t.deleted_at IS NULL AND t.parent_id IS NULL AND s.type <> 'done'", [Access::inboxId()]); ?>
       <a href="<?= e(url($base . '/tasks')) ?>" class="side-link<?= $active($base . '/tasks') ?>" data-tip="All tasks<?= $inboxOpen ? " · {$inboxOpen} in Inbox" : '' ?> (G A)" aria-label="All tasks">
         <svg class="i" viewBox="0 0 20 20"><rect x="3.5" y="3.5" width="13" height="13" rx="3"/><path d="M7 10.2l2.2 2.2L13.5 8"/></svg>

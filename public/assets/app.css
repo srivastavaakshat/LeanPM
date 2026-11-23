@@ -1124,3 +1124,50 @@ kbd + kbd { margin-left: 3px; }
 @media (max-width: 760px) { .hv-note { display: none; } .hv-bar { gap: 8px; padding: 8px 10px; } }
 /* An HTML attachment's tile */
 .file-ext.is-html { background: var(--accent); color: var(--lime); }
+
+/* Notifications page */
+.notif-page { max-width: 860px; }
+.notif-head { align-items: flex-start; }
+.notif-head .btn { flex: none; margin-top: 4px; }
+.notif-tabs { margin: 0 0 8px; }
+.notif-tabs .count { margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--lime); color: var(--accent); font-size: 11px; font-weight: 700; }
+.notif-tabs .count[hidden] { display: none; }
+.notif-group { margin: 22px 4px 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.notif-list { display: flex; flex-direction: column; gap: 6px; }
+.notif { position: relative; display: grid; grid-template-columns: 10px 40px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 14px 14px 10px; border-radius: 18px; background: rgba(255, 255, 255, .62); box-shadow: 0 0 0 1px var(--glass-line); cursor: pointer; transition: background .15s, box-shadow .15s, transform .15s; }
+.notif:hover { background: rgba(255, 255, 255, .92); box-shadow: 0 0 0 1px var(--glass-line), 0 10px 24px -16px rgba(20, 33, 61, .35); }
+.notif:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent), 0 0 0 5px var(--ring); }
+.notif.is-unread { background: #fff; box-shadow: 0 0 0 1px rgba(150, 210, 40, .45), 0 6px 18px -14px rgba(20, 33, 61, .3); }
+.notif-dot { width: 8px; height: 8px; margin-top: 16px; border-radius: 50%; }
+.notif.is-unread .notif-dot { background: #84cc16; box-shadow: 0 0 0 3px rgba(183, 243, 74, .35); }
+.notif-who { position: relative; width: 40px; height: 40px; }
+.notif-who .avatar.md { width: 40px; height: 40px; font-size: 14px; }
+.notif-type { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; color: #fff; background: var(--accent); }
+.notif-type .i { width: 11px; height: 11px; stroke-width: 2.2; }
+.notif-type.t-mention { background: #7c3aed; }
+.notif-type.t-comment { background: #0ea5e9; }
+.notif-type.t-assigned { background: #f59e0b; }
+.notif-type.t-done { background: #22c55e; }
+.notif-main { min-width: 0; }
+.notif-line { margin: 0; line-height: 1.45; color: var(--text); }
+.notif:not(.is-unread) .notif-line { color: var(--muted); }
+.notif:not(.is-unread) .notif-line strong { color: var(--text); font-weight: 600; }
+.notif-task { word-break: break-word; }
+.notif-quote { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--lime); border-radius: 0 10px 10px 0; background: rgba(20, 33, 61, .04); color: var(--text); font-size: 13.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.notif-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.notif-status { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; background: rgba(20, 33, 61, .05); color: var(--text); font-weight: 550; }
+.notif-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--sc); }
+.notif-actions { display: flex; align-items: center; gap: 4px; opacity: .0; transition: opacity .15s; }
+.notif:hover .notif-actions, .notif:focus-within .notif-actions, .notif.is-unread .notif-actions { opacity: 1; }
+.notif-read-btn { width: 30px; height: 30px; }
+.notif-empty { text-align: center; padding: 48px 24px; margin-top: 12px; }
+.notif-empty-icon { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: var(--accent); color: var(--lime); margin-bottom: 10px; }
+.notif-empty-icon .i { width: 24px; height: 24px; }
+.comment.is-flash { animation: comment-flash 2.4s var(--ease); border-radius: 12px; }
+@keyframes comment-flash { 0%, 40% { background: rgba(183, 243, 74, .35); box-shadow: 0 0 0 6px rgba(183, 243, 74, .35); } 100% { background: transparent; box-shadow: 0 0 0 6px rgba(183, 243, 74, 0); } }
+@media (hover: none) { .notif-actions { opacity: 1; } }
+@media (max-width: 760px) {
+  .notif-head { flex-direction: column; }
+  .notif { grid-template-columns: 8px 36px minmax(0, 1fr); }
+  .notif-actions { grid-column: 3; opacity: 1; }
+}

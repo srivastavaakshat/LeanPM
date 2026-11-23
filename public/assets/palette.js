@@ -203,6 +203,7 @@
       [['mod', 'K'], 'Search tasks and jump to any page'],
       [['/'], 'Search (when you aren’t typing)'],
       [['G', 'A'], 'Go to All tasks'],
+      [['G', 'I'], 'Go to Notifications'],
       [['G', 'N'], 'Go to Meeting notes'],
       [['G', 'M'], 'Go to Members'],
       [['['], 'Collapse or expand the sidebar'],
@@ -247,18 +248,36 @@
     if (pal || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || typing(e.target) || document.querySelector('dialog[open]')) return;
     if (gPending) {
       clearTimeout(gPending); gPending = 0; hideHint();
-      const to = { a: '/tasks', n: '/notes', m: '/members' }[e.key.toLowerCase()];
+      const to = { a: '/tasks', i: '/notifications', n: '/notes', m: '/members' }[e.key.toLowerCase()];
       if (to && org) { e.preventDefault(); location.href = `${base}/o/${org}${to}`; }
       return;
     }
     if (e.key === '/') { e.preventDefault(); openPalette(); }
     else if (e.key === '?') { e.preventDefault(); openHelp(); }
     else if (e.key.toLowerCase() === 'g' && org) {
-      showHint([h('span', { class: 'key-hint-item' }, 'Go to'), [['A'], 'All tasks'], [['N'], 'Meeting notes'], [['M'], 'Members']]);
+      showHint([h('span', { class: 'key-hint-item' }, 'Go to'), [['A'], 'All tasks'], [['I'], 'Notifications'], [['N'], 'Meeting notes'], [['M'], 'Members']]);
       gPending = setTimeout(() => { gPending = 0; hideHint(); }, 1500);
     }
   });
   document.addEventListener('click', e => { if (e.target.closest('[data-palette]')) { e.preventDefault(); openPalette(); } });
 
-  window.LPMKeys = { mod: MOD, isMac, showHint, hideHint, openPalette, openHelp, typing };
+  // ---------- unread notifications badge ----------
+  // Refreshed every minute while the tab is visible, and right away when you come back to it.
+  function setUnread(n) {
+    document.querySelectorAll('[data-notif-badge]').forEach(b => { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
+    document.querySelector('[data-notif-link]')?.setAttribute('aria-label', 'Notifications' + (n ? `, ${n} unread` : ''));
+  }
+  async function pollUnread() {
+    if (!org || document.hidden) return;
+    try {
+      const r = await fetch(`${base}/api/o/${org}/notifications/count`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+      if (r.ok) setUnread((await r.json()).unread);
+    } catch { /* offline: keep the last count */ }
+  }
+  if (org && document.querySelector('[data-notif-badge]')) {
+    setInterval(pollUnread, 60000);
+    document.addEventListener('visibilitychange', pollUnread);
+  }
+
+  window.LPMKeys = { mod: MOD, isMac, showHint, hideHint, openPalette, openHelp, typing, setUnread };
 })();

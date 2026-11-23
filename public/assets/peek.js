@@ -140,6 +140,9 @@
       draw(true);
       // The cursor waits in the update box, so you can type straight away.
       panel?.querySelector('.peek-comment textarea')?.focus({ preventScroll: true });
+      // Opened from a notification: bring that comment into view and light it up for a moment.
+      const c = opts.comment && panel?.querySelector(`.comment[data-comment="${opts.comment}"]`);
+      if (c) { c.scrollIntoView({ block: 'center' }); c.classList.add('is-flash'); setTimeout(() => c.classList.remove('is-flash'), 2400); }
     } catch {
       close();
     }
@@ -391,7 +394,7 @@
   function updatesSection(t, draft) {
     const feed = h('div', { class: 'peek-feed' });
     t.feed.forEach(item => feed.append(item.type === 'comment'
-      ? h('div', { class: 'comment' },
+      ? h('div', { class: 'comment', dataset: { comment: item.id } },
           h('div', { class: 'comment-head' }, avatar(item.user_id), h('strong', {}, members.get(item.user_id)?.name || 'Someone'), h('time', {}, fmtWhen(item.at)), item.edited ? h('span', { class: 'muted small' }, '(edited)') : null),
           h('div', { class: 'comment-body', html: item.html }),
           item.files.length ? h('div', { class: 'files compact' }, item.files.map(fileTile)) : null)

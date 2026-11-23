@@ -66,6 +66,7 @@ $router->post('/o/{org}/p/{project}/statuses/{status}/delete', [ProjectControlle
 
 // All tasks across projects (Inbox first) and meeting notes
 $router->get('/o/{org}/tasks', [App\Controllers\AllTasksController::class, 'show']);
+$router->get('/o/{org}/notifications', [App\Controllers\NotificationController::class, 'index']);
 $router->get('/o/{org}/notes', [App\Controllers\NotesController::class, 'index']);
 $router->post('/o/{org}/notes', [App\Controllers\NotesController::class, 'store']);
 $router->get('/o/{org}/notes/{doc}', [App\Controllers\NotesController::class, 'show']);
@@ -103,6 +104,8 @@ $router->post('/api/tasks/{task}/docs/link', [App\Controllers\NotesController::c
 $router->post('/api/tasks/{task}/docs/{doc}/unlink', [App\Controllers\NotesController::class, 'unlinkFromTask'], ['api']);
 $router->get('/api/o/{org}/search', [App\Controllers\SearchController::class, 'tasks'], ['api']);
 $router->post('/api/o/{org}/tasks/bulk', [TaskApiController::class, 'bulk'], ['api']);
+$router->get('/api/o/{org}/notifications/count', [App\Controllers\NotificationController::class, 'count'], ['api']);
+$router->post('/api/o/{org}/notifications/read', [App\Controllers\NotificationController::class, 'read'], ['api']);
 $router->get('/api/projects/{project}/tasks', [TaskApiController::class, 'index'], ['api']);
 $router->post('/api/projects/{project}/tasks', [TaskApiController::class, 'store'], ['api']);
 $router->get('/api/projects/{project}/files', [TaskApiController::class, 'files'], ['api']);

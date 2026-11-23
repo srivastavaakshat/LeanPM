@@ -203,6 +203,17 @@ A permission change takes effect on the member's next page load. The member's pr
 - Emails are queued and sent right after the save, with a cron job retrying any that failed. They go out from a Hostinger mailbox over SMTP.
 - Each person can turn mention emails off under Your account.
 
+### 5.8b Notifications
+- **Sidebar → Notifications** (G I), with an unread count that refreshes every minute.
+- You're notified when someone else (never for your own actions, and only about tasks you can open):
+  - **@mentions** you in a comment or a task description. The email for mentions still goes out as before.
+  - **Comments** on a task you're assigned to or created. If the comment also mentions you, you get just the mention.
+  - **Assigns** you to a task.
+  - **Completes** (moves to a Done stage) a task you're assigned to or created.
+- The page: tabs **All · Unread · Mentions · Assigned to me** (keys 1–4), grouped Today / Yesterday / Earlier this week / Older. Each row shows who, what, the task (with its parent for a subtask), the comment quoted, the task's current stage, project, and time.
+- **Reply / Open task** (or click the row, or Enter) opens the task in the quick view on the same page, with that comment highlighted and the cursor in the update box.
+- Read state: opening a task anywhere marks its notifications read. U toggles read/unread on a row; **Mark all as read** (Shift+R).
+
 ### 5.9 Attachments
 - **HTML files** (.html, .htm) can be attached to tasks and comments like any file. Clicking one opens a viewer: a LeanPM bar (file name, task, who added it, Reload, Download) above the page in a sandboxed frame. The page's scripts run, but it gets an origin of its own: it can't read LeanPM's cookies, storage or pages, or call the API as the user. Opened directly, the file redirects to the viewer.
 - Upload files to a task or to a comment by drag-and-drop or the file picker. Drop files anywhere on the left of a task to add them to its Files; drop them on the activity side to post them as a comment straight away (with anything already typed). The area lights up and says what will happen. The quick view works the same way, and a file dropped anywhere else never makes the browser leave the page.

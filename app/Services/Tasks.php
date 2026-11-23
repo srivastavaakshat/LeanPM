@@ -260,6 +260,9 @@ final class Tasks
         }
         DB::update('tasks', ['status_id' => (int) $status['id'], 'completed_at' => $completed, 'updated_at' => now()], 'id = ?', [$task['id']]);
         Activity::log((int) $task['id'], 'status', $old['name'] ?? '?', $status['name']);
+        if ($status['type'] === 'done' && ($old['type'] ?? '') !== 'done') {
+            Notifications::send($task, Notifications::people($task), 'done', null, $status['name']);
+        }
     }
 
     /** A status of the task's project, or 422. */

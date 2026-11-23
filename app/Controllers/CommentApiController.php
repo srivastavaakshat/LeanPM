@@ -8,6 +8,7 @@ use App\Core\Database as DB;
 use App\Services\Access;
 use App\Services\Activity;
 use App\Services\Mentions;
+use App\Services\Notifications;
 use App\Services\Tasks;
 use App\Services\Uploads;
 
@@ -38,10 +39,16 @@ final class CommentApiController
                 }
             }
             DB::update('tasks', ['updated_at' => now()], 'id = ?', [$t['id']]);
+            $mentioned = [];
             if ($body !== '') {
                 $people = Mentions::candidates((int) Access::$org['id'], (int) $t['project_id']);
-                Mentions::notify($t, Mentions::inText($body, $people), 'comment', $body, $people);
+                $mentioned = Mentions::inText($body, $people);
+                Mentions::notify($t, $mentioned, 'comment', $body, $people, $cid);
             }
+            // Everyone on the task hears about the comment; someone it mentions gets just the mention.
+            $n = count($files) - count($errors);
+            Notifications::send($t, array_diff(Notifications::people($t), $mentioned), 'comment', $cid,
+                $body !== '' ? $body : ($n > 0 ? 'Shared ' . $n . ($n === 1 ? ' file' : ' files') : null));
         });
         json_response(['task' => Tasks::detail(Access::task((int) $t['id'])), 'errors' => $errors]);
     }
@@ -62,7 +69,7 @@ final class CommentApiController
         $people = Mentions::candidates((int) Access::$org['id'], (int) $task['project_id']);
         $added = array_diff(Mentions::inText($body, $people), Mentions::inText($c['body'], $people));
         if ($added) {
-            Mentions::notify($task, $added, 'comment', $body, $people);
+            Mentions::notify($task, $added, 'comment', $body, $people, (int) $c['id']);
         }
         json_response(['task' => Tasks::detail(Access::task((int) $c['task_id']))]);
     }

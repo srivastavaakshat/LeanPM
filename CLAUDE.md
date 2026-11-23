@@ -12,6 +12,7 @@
 - Meeting notes: `notes_docs` / `notes_entries`; task chips are `<span class="task-ref" data-task="ID">title</span>` inside entry HTML (kept by `RichText::clean()`), hydrated live by `public/assets/notes.js`. `peek.js` is the shared quick-view panel.
 - A doc can be connected to one main task (`notes_docs.task_id`; no FK, so always go through `NotesController::linkedTask()`, which also checks the task is visible). Tasks created in a connected doc are created with that task as parent. Exports live in `App\Services\NotesExport`.
 - A permission added later falls back to the member's preset (`Perms::decode($json, $preset)`), so existing members don't silently lose access.
+- In-app notifications: `App\Services\Notifications::send($task, $userIds, $type, $commentId, $excerpt)` (types in `Notifications::TYPES`). It drops the actor and anyone who can't open the project. `Mentions::notify()` already sends `mention`; comments, assignment and Done (in `Tasks::setStatus()`) are wired. Opening a task (`TaskApiController::show`) marks its notifications read.
 - Log user-visible task changes with `Activity::log()` and add a sentence in `Activity::describe()`.
 - Descriptions go through `RichText::clean()`; comments are plain text rendered with `RichText::comment()`. Never echo user HTML anywhere else.
 - Files live in `storage/uploads/{org}/{task}/`, outside the web root, served only by `FileController`.

@@ -9,6 +9,7 @@ use App\Services\Access;
 use App\Services\Activity;
 use App\Services\Fields;
 use App\Services\Mentions;
+use App\Services\Notifications;
 use App\Services\RichText;
 use App\Services\Tasks;
 
@@ -80,6 +81,7 @@ final class TaskApiController
     public function show(string $task): never
     {
         $t = Access::task((int) $task);
+        Notifications::readTask((int) $t['id']);
         json_response(['task' => Tasks::detail($t)]);
     }
 
@@ -179,6 +181,7 @@ final class TaskApiController
                     DB::insert('task_assignees', ['task_id' => $t['id'], 'user_id' => $uid]);
                     Activity::log((int) $t['id'], 'assignee_added', null, (string) DB::value('SELECT name FROM users WHERE id = ?', [$uid]));
                 }
+                Notifications::send($t, array_diff($wanted, $current), 'assigned');
                 foreach (array_diff($current, $wanted) as $uid) {
                     DB::query('DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?', [$t['id'], $uid]);
                     Activity::log((int) $t['id'], 'assignee_removed', (string) DB::value('SELECT name FROM users WHERE id = ?', [$uid]));
