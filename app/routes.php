@@ -91,11 +91,13 @@ $router->get('/o/{org}/export/comments.csv', [ExportController::class, 'comments
 // Files (members of the task's organization only)
 $router->get('/files/{file}', [FileController::class, 'show']);
 $router->get('/files/{file}/view', [FileController::class, 'view']);
+$router->get('/notes/images/{image}', [App\Controllers\NotesController::class, 'image']);
 
 // JSON API used by the board, list and task panel
 $router->post('/api/notes/{doc}/entries', [App\Controllers\NotesController::class, 'createEntry'], ['api']);
 $router->post('/api/notes/entries/{entry}', [App\Controllers\NotesController::class, 'updateEntry'], ['api']);
 $router->post('/api/notes/entries/{entry}/delete', [App\Controllers\NotesController::class, 'deleteEntry'], ['api']);
+$router->post('/api/notes/{doc}/images', [App\Controllers\NotesController::class, 'uploadImage'], ['api']);
 $router->post('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'createTask'], ['api']);
 $router->get('/api/notes/{doc}/tasks', [App\Controllers\NotesController::class, 'tasks'], ['api']);
 $router->post('/api/tasks/{task}/docs', [App\Controllers\NotesController::class, 'createForTask'], ['api']);

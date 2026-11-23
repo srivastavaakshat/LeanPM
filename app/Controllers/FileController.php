@@ -58,7 +58,7 @@ final class FileController
         ], null);
     }
 
-    private static function send(string $path, string $type, string $disposition, string $fileName, string $csp): never
+    public static function send(string $path, string $type, string $disposition, string $fileName, string $csp): never
     {
         $name = str_replace(['"', "\r", "\n"], '', $fileName);
         header('Content-Type: ' . $type);

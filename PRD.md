@@ -266,6 +266,12 @@ A permission change takes effect on the member's next page load. The member's pr
   - **+ New entry** starts another, e.g. a second meeting the same day.
   - Older entries stay editable and save automatically.
 - **Writing:** bold, italic, headings, lists, and links. Pasting a URL makes it a link, and Cmd/Ctrl+click opens a link.
+- **Images between the text:** add PNG, JPEG, GIF or WebP images (up to the upload limit) with the toolbar's **Image** button, by pasting a screenshot, or by dragging files in.
+  - They go exactly where the cursor is. Mid-line, the line splits around the image. While dragging, a lime caret shows where the image will land.
+  - Drag an image that's already in the notes to move it, even into another entry you can edit.
+  - Click an image for **S / M / Full** size, **Open** (full size in a new tab), or **Remove** (Delete key). Images under 480 px wide start at a smaller size. Read-only entries open an image when you click it.
+  - Images are stored outside the web root (`storage/uploads/{org}/notes/{doc}/`) and served only to people who can open the doc. Saved text keeps an image only if it was uploaded to that doc. Deleting the doc deletes its images.
+  - Exports: the PDF view shows the images, Word embeds them, and Markdown and text show “[Image: name]”.
 - **Create a task from a line:** type `/` (or `\`) at the end of a line and choose **Task** (or click **Task** in the toolbar).
   - The line becomes an inline form: a TASK tag, the name prefilled from the line, a project picker, and ✓ / ✕. Enter creates the task and the cursor moves to a new line.
   - The line then shows a **live task chip** with a checkbox (ticked when done), title, current stage, project, people, and due date.
@@ -286,7 +292,7 @@ A permission change takes effect on the member's next page load. The member's pr
 - **Connect a doc to a task** (optional). In a task's **Docs** section: **+ New doc** starts a doc named after the task (shared with the organization) and opens it; **Connect a doc** picks one of your own docs. A doc is connected to one task at a time, and only to a main task (not a subtask).
 - **While a doc is connected, tasks you create in it become subtasks of that task**, in its project. The doc shows a banner with a link to the task, and the task draft says “Subtask · ↳ task name”. Disconnect from the doc's Settings or with × in the task's Docs list (only the doc's creator can connect or disconnect it).
 - The task's history records connecting and disconnecting. The quick view lists connected docs, and the Meeting notes list shows each doc's task.
-- **Export** a whole doc from its Export menu: **PDF** (a clean print view: choose “Save as PDF”), **Word (.doc)**, **Markdown (.md)** or **plain text (.txt)**. Entries keep their headings, lists and links; task chips become checkboxes with each task's current stage and project.
+- **Export** a whole doc from its Export menu: **PDF** (a clean print view: choose “Save as PDF”), **Word (.doc)**, **Markdown (.md)** or **plain text (.txt)**. Entries keep their headings, lists, links and images; task chips become checkboxes with each task's current stage and project.
 
 ### 5.13 All tasks and the Inbox
 - **All tasks** (sidebar) lists every task the member can see, grouped by project, with search, *Assigned to me*, *Hide done*, and *Show subtasks*.

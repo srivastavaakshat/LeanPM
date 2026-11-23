@@ -15,8 +15,12 @@ final class NotesExport
      * @param array $entries notes_entries rows (+ author), in the order to export
      * @param array $chips   task summaries keyed by id (NotesController::chips)
      * @param ?array $task   the task the doc is connected to, if any
+     * @param array $images  notes images keyed by id: ['url', 'path', 'mime', 'name']
      */
-    public function __construct(private array $doc, private array $entries, private array $chips, private ?array $task) {}
+    public function __construct(private array $doc, private array $entries, private array $chips, private ?array $task, private array $images = []) {}
+
+    /** Word files travel without a login, so their images are embedded; the print view links them. */
+    private bool $embed = false;
 
     // ---------- Markdown ----------
     public function markdown(): string
@@ -45,6 +49,7 @@ final class NotesExport
     // ---------- Word and print (HTML) ----------
     public function word(): string
     {
+        $this->embed = true;
         return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>'
             . e($this->doc['title']) . '</title><style>' . $this->css() . '</style></head><body>' . $this->html() . '</body></html>';
     }
@@ -76,7 +81,7 @@ final class NotesExport
             . 'h1{font-size:28px;margin:0 0 4px}h2{font-size:18px;margin:0 0 2px}h3,h4{font-size:15px;margin:14px 0 4px}'
             . '.sub,.by{color:#5f6779;margin:0 0 6px}.entry{border-top:1px solid #dde1e8;padding-top:18px;margin-top:22px;page-break-inside:avoid}'
             . '.task{display:inline-block;border:1px solid #cfd4de;border-radius:6px;padding:1px 8px;font-weight:600}.task .meta{font-weight:400;color:#5f6779}'
-            . 'a{color:#14213D}blockquote{border-left:3px solid #B7F34A;margin:0 0 8px;padding-left:12px;color:#5f6779}';
+            . 'img{display:block;max-width:100%;height:auto;margin:6px 0}a{color:#14213D}blockquote{border-left:3px solid #B7F34A;margin:0 0 8px;padding-left:12px;color:#5f6779}';
     }
 
     // ---------- shared ----------
@@ -132,6 +137,20 @@ final class NotesExport
 
         if ($tag === 'span' && str_contains($cls, ' task-ref ')) {
             return $this->chip((int) $node->getAttribute('data-task'), trim($node->textContent), $as);
+        }
+        if ($tag === 'img') {
+            $img = $this->images[(int) $node->getAttribute('data-image')] ?? null;
+            $label = '[Image' . ($img ? ': ' . $img['name'] : '') . ']';
+            if ($as !== 'html') {
+                return $label . "\n\n";
+            }
+            if (!$img) {
+                return '';
+            }
+            $src = $this->embed && is_file($img['path']) && filesize($img['path']) <= 8388608
+                ? 'data:' . $img['mime'] . ';base64,' . base64_encode((string) file_get_contents($img['path']))
+                : $img['url'];
+            return '<img src="' . e($src) . '" alt="' . e($node->getAttribute('alt')) . '" style="max-width:100%;height:auto;border-radius:6px">';
         }
         if ($tag === 'br') {
             return $as === 'html' ? '<br>' : ($as === 'md' ? "  \n" : "\n");

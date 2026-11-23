@@ -318,6 +318,26 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border: 1px solid 
 .entry-body a { text-decoration: underline; text-underline-offset: 2px; }
 .entry-body.is-empty::before { content: attr(data-placeholder); color: #b3b6c0; position: absolute; pointer-events: none; }
 .entry-body.is-empty { position: relative; }
+/* Images between the lines of notes: click to size or remove, drag to move */
+.entry-toolbar .tb-image { display: inline-flex; align-items: center; gap: 4px; }
+.entry-toolbar .tb-image .i { width: 14px; height: 14px; }
+.entry-body img { display: block; max-width: 100%; height: auto; margin: 8px 0; border-radius: 8px; border: 1px solid var(--line); background: var(--line-2); cursor: pointer; }
+.entry-body img[data-size="m"] { max-width: min(100%, 480px); }
+.entry-body img[data-size="s"] { max-width: min(100%, 240px); }
+.entry-body[contenteditable=true] img { cursor: grab; }
+.entry-body img.is-selected { outline: 3px solid var(--lime); outline-offset: 2px; }
+.entry-body img.is-dragging { opacity: .35; }
+.entry-body.is-drop, .entry-body:has(.is-dragging) { background: var(--accent-soft); border-radius: 8px; }
+.drop-caret { position: absolute; z-index: 90; width: 3px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 2px var(--lime); pointer-events: none; }
+.img-uploading { display: inline-flex; align-items: center; gap: 8px; margin: 6px 0; padding: 18px 16px; min-width: 240px; border: 1px dashed var(--accent-line); border-radius: 8px; background: var(--accent-soft); color: var(--muted); font-size: 13px; }
+.img-uploading .spinner { width: 14px; height: 14px; border: 2px solid var(--accent-line); border-top-color: var(--accent); border-radius: 50%; animation: img-spin .8s linear infinite; }
+@keyframes img-spin { to { transform: rotate(360deg); } }
+.img-bar { width: auto; display: flex; align-items: center; gap: 2px; padding: 4px; }
+.img-bar button { border: 0; background: none; border-radius: 6px; padding: 4px 9px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.img-bar button:hover { background: var(--line-2); color: var(--text); }
+.img-bar button.is-on { background: var(--accent); color: var(--lime); }
+.img-bar button.danger:hover { color: var(--danger); }
+.img-bar-sep { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
 .entry-body.is-empty > p:only-child { min-height: 1.65em; }
 
 /* inline "new task" form on a line */

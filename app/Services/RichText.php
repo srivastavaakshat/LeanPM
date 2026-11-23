@@ -11,10 +11,18 @@ final class RichText
 {
     private const ALLOWED = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'ul', 'ol', 'li', 'a', 'h2', 'h3', 'blockquote', 'code', 'pre', 'div', 'span'];
 
-    public static function clean(?string $html): ?string
+    /** Images allowed in this call: [image id => src url]. Only meeting notes pass any (see NotesController). */
+    private static array $images = [];
+
+    /**
+     * @param array<int,string> $images ids of uploaded images this text may show, mapped to their URL.
+     *        An <img> survives only as <img data-image="ID" src="(that URL)">, so nothing else can be loaded.
+     */
+    public static function clean(?string $html, array $images = []): ?string
     {
+        self::$images = $images;
         $html = trim((string) $html);
-        if ($html === '' || trim(strip_tags($html)) === '' && !str_contains($html, '<li')) {
+        if ($html === '' || trim(strip_tags($html)) === '' && !str_contains($html, '<li') && !($images && str_contains($html, '<img'))) {
             return null;
         }
         $doc = new \DOMDocument();
@@ -41,6 +49,25 @@ final class RichText
                 $tag = strtolower($child->tagName);
                 if (in_array($tag, ['script', 'style', 'iframe', 'object', 'embed', 'template', 'svg', 'math'], true)) {
                     $node->removeChild($child);
+                    continue;
+                }
+                if ($tag === 'img') {
+                    $id = (int) $child->getAttribute('data-image');
+                    if (!isset(self::$images[$id])) {
+                        $node->removeChild($child);
+                        continue;
+                    }
+                    $size = $child->getAttribute('data-size');
+                    $alt = mb_substr($child->getAttribute('alt'), 0, 200);
+                    foreach (iterator_to_array($child->attributes) as $attr) {
+                        $child->removeAttribute($attr->name);
+                    }
+                    $child->setAttribute('src', self::$images[$id]);
+                    $child->setAttribute('data-image', (string) $id);
+                    if (in_array($size, ['s', 'm'], true)) {
+                        $child->setAttribute('data-size', $size);
+                    }
+                    $child->setAttribute('alt', $alt);
                     continue;
                 }
                 self::walk($child);

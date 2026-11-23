@@ -155,7 +155,11 @@ final class NotesController
     {
         $o = Access::org($org);
         $d = $this->doc((int) $doc, ownerOnly: true);
-        DB::query('DELETE FROM notes_docs WHERE id = ?', [$d['id']]); // its entries go with it; tasks stay
+        DB::query('DELETE FROM notes_docs WHERE id = ?', [$d['id']]); // its entries and images go with it; tasks stay
+        foreach (glob(self::imageDir((int) $o['id'], (int) $d['id']) . '/*') ?: [] as $f) {
+            @unlink($f);
+        }
+        @rmdir(self::imageDir((int) $o['id'], (int) $d['id']));
         flash('success', "“{$d['title']}” deleted. Tasks created from it are still on their boards.");
         redirect("/o/{$o['slug']}/notes");
     }
@@ -170,7 +174,7 @@ final class NotesController
         $id = DB::insert('notes_entries', [
             'doc_id' => $d['id'], 'author_id' => Auth::id(), 'meeting_at' => $at,
             'title' => nullable(mb_substr((string) ($in['title'] ?? ''), 0, 120)),
-            'body' => RichText::clean(is_string($in['body'] ?? null) ? $in['body'] : null),
+            'body' => RichText::clean(is_string($in['body'] ?? null) ? $in['body'] : null, self::imageUrls((int) $d['id'])),
             'created_at' => now(), 'updated_at' => now(),
         ]);
         DB::update('notes_docs', ['updated_at' => now()], 'id = ?', [$d['id']]);
@@ -183,7 +187,7 @@ final class NotesController
         $in = json_input();
         $set = ['updated_at' => now()];
         if (array_key_exists('body', $in)) {
-            $set['body'] = RichText::clean(is_string($in['body']) ? $in['body'] : null);
+            $set['body'] = RichText::clean(is_string($in['body']) ? $in['body'] : null, self::imageUrls((int) $d['id']));
         }
         if (array_key_exists('title', $in)) {
             $set['title'] = nullable(mb_substr((string) $in['title'], 0, 120));
@@ -198,6 +202,83 @@ final class NotesController
         [$e] = $this->entry((int) $entry);
         DB::query('DELETE FROM notes_entries WHERE id = ?', [$e['id']]);
         json_response(['ok' => true]);
+    }
+
+    public const IMAGE_TYPES = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+
+    /** Upload one image (field "image") to place in an entry of this doc. Anyone who can write in the doc can add one. */
+    public function uploadImage(string $doc): never
+    {
+        $d = $this->apiDoc((int) $doc);
+        $file = $_FILES['image'] ?? null;
+        $maxMb = (int) config('upload_max_mb', 25);
+        if (!$file || is_array($file['name']) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            abort(422, in_array($file['error'] ?? 0, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) ? 'That image is larger than the server allows.' : 'The image didn’t upload. Please try again.');
+        }
+        if ($file['size'] > $maxMb * 1048576) {
+            abort(422, "Images can be up to {$maxMb} MB.");
+        }
+        // Trust the bytes, not the name or the browser: only real PNG, JPEG, GIF or WebP files.
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: '';
+        $size = @getimagesize($file['tmp_name']);
+        if (!isset(self::IMAGE_TYPES[$mime]) || !$size) {
+            abort(422, 'Only PNG, JPEG, GIF or WebP images can go in notes.');
+        }
+        $dir = self::imageDir((int) $d['org_id'], (int) $d['id']);
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            abort(500, 'The server couldn’t save the image. Check that storage/uploads is writable.');
+        }
+        $stored = bin2hex(random_bytes(12)) . '.' . self::IMAGE_TYPES[$mime];
+        $ok = is_uploaded_file($file['tmp_name']) ? move_uploaded_file($file['tmp_name'], "$dir/$stored") : rename($file['tmp_name'], "$dir/$stored");
+        if (!$ok) {
+            abort(500, 'The image couldn’t be saved.');
+        }
+        $id = DB::insert('notes_images', [
+            'org_id' => $d['org_id'], 'doc_id' => $d['id'], 'user_id' => Auth::id(),
+            'file_name' => \App\Services\Uploads::cleanName((string) $file['name']), 'stored_name' => $stored,
+            'size' => (int) $file['size'], 'mime' => $mime, 'width' => (int) $size[0], 'height' => (int) $size[1], 'created_at' => now(),
+        ]);
+        json_response(['image' => ['id' => $id, 'url' => self::imageUrl($id), 'width' => (int) $size[0], 'height' => (int) $size[1]]], 201);
+    }
+
+    /** Stream a notes image to someone who can open its doc. */
+    public function image(string $image): never
+    {
+        $img = DB::one('SELECT * FROM notes_images WHERE id = ?', [(int) $image]);
+        if (!$img) {
+            abort(404);
+        }
+        $this->apiDoc((int) $img['doc_id']);
+        $path = self::imageDir((int) $img['org_id'], (int) $img['doc_id']) . '/' . basename($img['stored_name']);
+        if (!is_file($path) || !isset(self::IMAGE_TYPES[$img['mime']])) {
+            abort(404, 'This image is missing on the server.');
+        }
+        FileController::send($path, $img['mime'], 'inline', $img['file_name'], "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+    }
+
+    /** The images a doc's entries may show: [id => url]. */
+    private static function imageUrls(int $docId): array
+    {
+        try {
+            $rows = DB::all('SELECT id FROM notes_images WHERE doc_id = ?', [$docId]);
+        } catch (\Throwable) {
+            return []; // migration 009 not run yet: notes still save, just without images
+        }
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['id']] = self::imageUrl((int) $r['id']);
+        }
+        return $out;
+    }
+
+    private static function imageUrl(int $id): string
+    {
+        return url('/notes/images/' . $id);
+    }
+
+    private static function imageDir(int $orgId, int $docId): string
+    {
+        return config('storage_path') . "/uploads/{$orgId}/notes/{$docId}";
     }
 
     /** Create a task from a line in the notes. Goes to the chosen project, else the doc's default, else the Inbox. */
@@ -316,7 +397,12 @@ final class NotesController
             preg_match_all('/data-task="(\d+)"/', (string) $e['body'], $m);
             array_push($ids, ...array_map('intval', $m[1]));
         }
-        $export = new \App\Services\NotesExport($d, $entries, $this->chips(array_values(array_unique($ids))), self::linkedTask($d));
+        $images = [];
+        foreach (array_keys(self::imageUrls((int) $d['id'])) ? DB::all('SELECT * FROM notes_images WHERE doc_id = ?', [$d['id']]) : [] as $r) {
+            $images[(int) $r['id']] = ['url' => self::imageUrl((int) $r['id']), 'mime' => $r['mime'], 'name' => $r['file_name'],
+                'path' => self::imageDir((int) $r['org_id'], (int) $r['doc_id']) . '/' . basename($r['stored_name'])];
+        }
+        $export = new \App\Services\NotesExport($d, $entries, $this->chips(array_values(array_unique($ids))), self::linkedTask($d), $images);
         $name = slugify($d['title']) ?: 'meeting-notes';
         header('X-Robots-Tag: noindex');
         switch ($format) {
